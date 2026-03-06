@@ -2,7 +2,8 @@ const msalConfig = {
     auth: {
         clientId: "894b1f45-66d7-4b1a-995d-04876954ed54",
         authority: "https://login.microsoftonline.com/common",
-        redirectUri: window.location.origin
+        //redirectUri: window.location.origin
+        redirectUri: "https://ronogon1.github.io/OligarApp/"
     }
 };
 

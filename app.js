@@ -6,6 +6,10 @@ const msalConfig = {
     }
 };
 
+// Estas variables van afuera del objeto, al mismo nivel
+const rutaBase = "LIBRERIAS/Desktop/VARIOS/OligarApp";
+const nombreArchivo = "OligarApp.xlsx";
+
 const msalInstance = new msal.PublicClientApplication(msalConfig);
 
 // --- AUTENTICACIÓN ---
@@ -70,14 +74,26 @@ document.getElementById('formVentas').onsubmit = async (e) => {
         const tokenResp = await msalInstance.acquireTokenSilent({ scopes: ["Files.ReadWrite"], account: account });
         const token = tokenResp.accessToken;
 
-        const respContador = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${rutaBase}:/workbook/tables/BD_Facturas/range`, { 
+        // 1. LEER LA TABLA REAL (Corregimos la ruta incluyendo el nombre del archivo)
+        const respContador = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${rutaBase}/OligarApp.xlsx:/workbook/tables/BD_Facturas/range`, { 
             headers: { 'Authorization': `Bearer ${token}` } 
         });
         const dataContador = await respContador.json();
-        // Contamos las filas existentes (restando el encabezado)
-        const totalFilas = dataContador.values ? dataContador.values.length - 1 : 0;
-        const nuevoCorrelativo = (totalFilas + 1).toString().padStart(4, '0');
+        
+        let nuevoCorrelativoNum = 1;
 
+        // 2. BUSCAR EL VALOR MÁXIMO REAL
+        if (dataContador.values && dataContador.values.length > 1) {
+            // Extraemos la primera columna (Factura_ID), saltando el encabezado [0]
+            const idsExistentes = dataContador.values.slice(1).map(fila => {
+                // El ID viene como "20260001", tomamos los últimos 4 dígitos
+                const idTexto = fila[0].toString();
+                return parseInt(idTexto.substring(4)) || 0;
+            });
+            nuevoCorrelativoNum = Math.max(...idsExistentes) + 1;
+        }
+
+        const nuevoCorrelativo = nuevoCorrelativoNum.toString().padStart(4, '0');
         const fechaVenta = document.getElementById('v_fecha').value; 
         const añoActual = fechaVenta ? fechaVenta.split('-')[0] : "2026";
         const facturaID = `${añoActual}${nuevoCorrelativo}`;
@@ -151,7 +167,12 @@ function generarFactura(datos) {
     const contenedor = document.getElementById('detalle-factura');
     
     // Función simple para mostrar números con 2 decimales sin el símbolo C$ en cada fila
-    const n = (val) => parseFloat(val).toFixed(2);
+    const n = (val) => {
+        return parseFloat(val).toLocaleString('en-US', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        });
+    };
     // Solo para el total final usamos el formato de moneda
     const formatoMoneda = (val) => "C$ " + parseFloat(val).toLocaleString('en-US', { minimumFractionDigits: 2 });
 
@@ -159,18 +180,39 @@ function generarFactura(datos) {
         <tr>
             <td style="padding:10px; border-bottom:1px solid #eee;">
                 ${d.Cantidad}x ${d.Producto}
-                ${d.Desc_Prod > 0 ? `<br><small style="color:red;">Desc: -${n(d.Desc_Prod)}</small>` : ''}
+                ${d.Desc_Prod > 0 ? `
+                    <br>
+                    <small style="color:#333;">Precio: ${n(parseFloat(d.Subtotal) + parseFloat(d.Desc_Prod))}</small>
+                    <small style="color:red; margin-left: 8px;">Desc: -${n(d.Desc_Prod)}</small>
+                ` : ''}
             </td>
             <td style="padding:10px; text-align:right; border-bottom:1px solid #eee;">${n(d.Subtotal)}</td>
         </tr>
     `).join('');
 
     contenedor.innerHTML = `
-        <div style="display:flex; justify-content:space-between; margin-bottom:20px; background:#f9f9f9; padding:10px; border-radius:5px; font-size:0.9em;">
-            <span><strong>N°:</strong> ${datos.Factura_ID}</span>
-            <span><strong>Fecha:</strong> ${new Date().toLocaleDateString()}</span>
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px; background:#f9f9f9; padding:10px; border-radius:5px; font-size:1em;">
+            <span><strong>Factura N°:</strong> ${datos.Factura_ID}</span>
+            <span><strong>Fecha:</strong> ${new Date().toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            })}</span>
         </div>
-        <div style="margin-bottom:15px;"><strong>Cliente:</strong> ${datos.Cliente}</div>
+        <div style="
+            display: flex; 
+            justify-content: flex-start; 
+            margin-bottom: 20px; 
+            background-color: #fff; 
+            border-radius: 4px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03); /* Sombra muy tenue */
+        ">
+            <div style="text-align: left; border-left: 4px solid #8d6e63; padding: 10px 15px;">
+                <span style="font-size: 1.05em; color: #333;">
+                    <strong style="color: #8d6e63;">Cliente:</strong> ${datos.Cliente}
+                </span>
+            </div>
+        </div>
         <table style="width:100%; border-collapse:collapse; margin-bottom:15px;">
             <tr style="background:#f4f4f4; font-size:0.8em;">
                 <th style="text-align:left; padding:10px;">DESCRIPCIÓN</th>

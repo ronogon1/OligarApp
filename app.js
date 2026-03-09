@@ -36,15 +36,18 @@ function navegar(pantalla) {
 
 // --- LECTURA DE EXCEL ---
 async function leerExcel(token) {
-    const rutaBase = "LIBRERIAS/Desktop/VARIOS/OligarApp/OligarApp.xlsx";
+    const fieldId = "56163dd91d08f884"; // traido desde Microsoft Graph agregando la ruta del archivo
+
+    const rutaBase = "LIBRERIAS/Desktop/VARIOS/OligarApp/OligarApp.xlsx"; // posiblemente se deje de usar
     // Añadimos un parámetro aleatorio al final de la ruta para evitar el caché del navegador
     const cacheBuster = `?t=${Date.now()}`;
     const tablas = ["BD_Facturas", "T_PyGanancia", "T_PyMO"]; 
 
     for (const nombreTabla of tablas) {
         try {
-            // Se solicita el rango de la tabla específicamente
-            const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${rutaBase}:/workbook/tables/${nombreTabla}/range${cacheBuster}`;
+            // Se solicita el rango de la tabla específicamente, se usa el campo tomado de MS Graph
+            const url = `https://graph.microsoft.com/v1.0/me/drive/items/${fileId}/workbook/tables/${nombreTabla}/range${cacheBuster}`;
+            
             const response = await fetch(url, { 
                 headers: { 'Authorization': `Bearer ${token}`, 'Cache-Control': 'no-cache' } 
             });
@@ -76,7 +79,7 @@ document.getElementById('formVentas').onsubmit = async (e) => {
         const token = tokenResp.accessToken;
 
         // 1. LEER LA TABLA REAL (Corregimos la ruta incluyendo el nombre del archivo)
-        const respContador = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${rutaBase}/OligarApp.xlsx:/workbook/tables/BD_Facturas/range`, { 
+        const respContador = await fetch(`https://graph.microsoft.com/v1.0/ronogon/drive/root:/${rutaBase}/OligarApp.xlsx:/workbook/tables/BD_Facturas/range`, { 
             headers: { 'Authorization': `Bearer ${token}` } 
         });
         const dataContador = await respContador.json();
@@ -119,7 +122,7 @@ document.getElementById('formVentas').onsubmit = async (e) => {
             if (archivo) {
                 nombreImg = `${facturaID}_${nombre.replace(/\s+/g, '_')}.jpg`;
                 urlLocal = URL.createObjectURL(archivo);
-                await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/LIBRERIAS/Desktop/VARIOS/OligarApp/Productos/${nombreImg}:/content`, {
+                await fetch(`https://graph.microsoft.com/v1.0/ronogon/drive/root:/LIBRERIAS/Desktop/VARIOS/OligarApp/Productos/${nombreImg}:/content`, {
                     method: 'PUT', headers: { 'Authorization': `Bearer ${token}` }, body: archivo
                 });
             }
@@ -135,14 +138,14 @@ document.getElementById('formVentas').onsubmit = async (e) => {
         const totalFinal = sumaSubtotales + envio - descG;
 
         // Guardar Detalle
-        await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/LIBRERIAS/Desktop/VARIOS/OligarApp/OligarApp.xlsx:/workbook/tables/BD_Factura_Detalle/rows`, {
+        await fetch(`https://graph.microsoft.com/v1.0/ronogon/drive/root:/LIBRERIAS/Desktop/VARIOS/OligarApp/OligarApp.xlsx:/workbook/tables/BD_Factura_Detalle/rows`, {
             method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ values: detalleExcel })
         });
 
         // Guardar Cabecera (Factura_ID, Fecha, Cliente, Envio, Desc_Global, Total_Factura, Estado)
         const filaCabecera = [[facturaID, document.getElementById('v_fecha').value, document.getElementById('v_cliente').value, envio, descG, totalFinal, "Activo"]];
-        await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/LIBRERIAS/Desktop/VARIOS/OligarApp/OligarApp.xlsx:/workbook/tables/BD_Facturas/rows`, {
+        await fetch(`https://graph.microsoft.com/v1.0/ronogon/drive/root:/LIBRERIAS/Desktop/VARIOS/OligarApp/OligarApp.xlsx:/workbook/tables/BD_Facturas/rows`, {
             method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ values: filaCabecera })
         });
@@ -263,7 +266,7 @@ async function reimprimirFacturaRelacional(idFactura) {
         const cacheBuster = `?t=${Date.now()}`;
 
         // 1. Buscar cabecera
-        const respC = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${rutaBase}:/workbook/tables/BD_Facturas/range${cacheBuster}`, { 
+        const respC = await fetch(`https://graph.microsoft.com/v1.0/ronogon/drive/root:/${rutaBase}:/workbook/tables/BD_Facturas/range${cacheBuster}`, { 
             headers: { 'Authorization': `Bearer ${token}` } 
         });
         const dataC = await respC.json();
@@ -275,7 +278,7 @@ async function reimprimirFacturaRelacional(idFactura) {
         }
 
         // 2. Buscar detalles
-        const respD = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${rutaBase}:/workbook/tables/BD_Factura_Detalle/range${cacheBuster}`, { 
+        const respD = await fetch(`https://graph.microsoft.com/v1.0/ronogon/drive/root:/${rutaBase}:/workbook/tables/BD_Factura_Detalle/range${cacheBuster}`, { 
             headers: { 'Authorization': `Bearer ${token}` } 
         });
         const dataD = await respD.json();
@@ -285,7 +288,7 @@ async function reimprimirFacturaRelacional(idFactura) {
             let urlImg = "";
             if (f[6] && f[6] !== "sin_foto.png") {
                 try {
-                    const respImg = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/LIBRERIAS/Desktop/VARIOS/OligarApp/Productos/${f[6]}:/content`, { 
+                    const respImg = await fetch(`https://graph.microsoft.com/v1.0/ronogon/drive/root:/LIBRERIAS/Desktop/VARIOS/OligarApp/Productos/${f[6]}:/content`, { 
                         headers: { 'Authorization': `Bearer ${token}` } 
                     });
                     if (respImg.ok) urlImg = URL.createObjectURL(await respImg.blob());
@@ -380,7 +383,7 @@ async function refrescarTablasManual() {
         
         botones.forEach(b => b.disabled = false);
         alert("Tablas actualizadas correctamente.");
-    } catch (err) {
+    } catch (err) { 
         console.error("Error al refrescar:", err);
         alert("No se pudo actualizar. Revisa tu conexión.");
     }

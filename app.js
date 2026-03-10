@@ -9,8 +9,9 @@ const msalConfig = {
     }
 };
 
-const fileId = "56163dd91d08f884";
-const graphBaseUrl = `https://graph.microsoft.com/v1.0/me/drive/items/${fileId}/workbook`;
+const driveId = "56163DD91D08F884"
+const fileId = "56163DD91D08F884!s67e52d563b4b4c59911dbd743552ac7d";
+const graphBaseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
 const msalInstance = new msal.PublicClientApplication(msalConfig);
 
 // ==========================================
@@ -81,14 +82,20 @@ function agregarFilaProducto() {
 // 4. LÓGICA DE DATOS (READ/WRITE)
 // ==========================================
 async function leerExcel() {
-    // Importante: Asegúrate que en Excel se llamen exactamente así
-    const tablas = ["BD_Facturas", "T_PyGanancia", "T_PyMO"]; 
+    
+    const tablas = ["BD_Facturas", "BD_Factura_Detalle"]; 
     const token = await getAuthToken();
+    const mensajeEl = document.getElementById('mensaje');
 
     for (const nombre of tablas) {
         try {
             const url = `${graphBaseUrl}/tables/${nombre}/range?t=${Date.now()}`;
             const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!resp.ok) {
+                const errorLog = await resp.json();
+                console.error(`Error en tabla ${nombre}:`, errorLog);
+                continue; 
+            }
             const data = await resp.json();
             if (data.values) mostrarEnPantalla(nombre, data.values);
         } catch (err) { console.error(`Error en ${nombre}:`, err); }
@@ -170,7 +177,7 @@ document.getElementById('formVentas').onsubmit = async (e) => {
 // 6. RENDERIZADO Y CONSULTAS
 // ==========================================
 function mostrarEnPantalla(nombre, valores) {
-    const ids = { 'BD_Facturas': 'tabla-ventas', 'T_PyGanancia': 'tabla-ganancia', 'T_PyMO': 'tabla-mo' };
+    const ids = { 'BD_Facturas': 'BD_Factura_Detalle' };
     const contenedor = document.getElementById(ids[nombre]);
     if (!contenedor || !valores) return;
 
@@ -235,4 +242,4 @@ async function refrescarTablasManual() {
     await leerExcel();
     alert("Datos actualizados.");
 }
-//agrego para validar último commit "refactorización con gem OligarApp"
+

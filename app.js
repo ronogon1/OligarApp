@@ -87,19 +87,30 @@ async function leerExcel() {
     const token = await getAuthToken();
     const mensajeEl = document.getElementById('mensaje');
 
+    mensajeEl.innerText = "Cargando datos desde Excel...";
+
     for (const nombre of tablas) {
         try {
             const url = `${graphBaseUrl}/tables/${nombre}/range?t=${Date.now()}`;
+            console.log('Leyendo tabla:', nombre, 'URL:', url);
+
             const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (!resp.ok) {
+            
+            if (!resp.ok) {
                 const errorLog = await resp.json();
                 console.error(`Error en tabla ${nombre}:`, errorLog);
                 continue; 
             }
+            
             const data = await resp.json();
-            if (data.values) mostrarEnPantalla(nombre, data.values);
+            if (data.values) {
+                mostrarEnPantalla(nombre, data.values);
+            } else {
+                console.warn(`Tabla ${nombre} sin valores`);
+            }
         } catch (err) { console.error(`Error en ${nombre}:`, err); }
     }
+    mensajeEl.innerText = "Datos cargados.";
 }
 
 async function escribirFilas(nombreTabla, filas) {
@@ -177,7 +188,7 @@ document.getElementById('formVentas').onsubmit = async (e) => {
 // 6. RENDERIZADO Y CONSULTAS
 // ==========================================
 function mostrarEnPantalla(nombre, valores) {
-    const ids = { 'BD_Facturas': 'BD_Factura_Detalle' };
+    const ids = { 'BD_Facturas': 'tabla-facturas','BD_Factura_Detalle': 'tabla-factura-detalle' };
     const contenedor = document.getElementById(ids[nombre]);
     if (!contenedor || !valores) return;
 

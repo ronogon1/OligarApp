@@ -14,19 +14,15 @@ const graphBaseUrl = `https://graph.microsoft.com/v1.0/me/drive/items/${fileId}/
 const msalInstance = new msal.PublicClientApplication(msalConfig);
 
 // ==========================================
-// 2. AUTENTICACIÓN Y TOKEN
+// 2. AUTENTICACIÓN
 // ==========================================
 async function getAuthToken() {
     const account = msalInstance.getAllAccounts()[0];
-    if (!account) throw new Error("Sesión expirada o no iniciada.");
-
+    if (!account) throw new Error("Sesión no iniciada.");
     try {
-        const resp = await msalInstance.acquireTokenSilent({ 
-            scopes: ["Files.ReadWrite"], 
-            account: account 
-        });
+        const resp = await msalInstance.acquireTokenSilent({ scopes: ["Files.ReadWrite"], account });
         return resp.accessToken;
-    } catch (error) {
+    } catch (e) {
         const resp = await msalInstance.acquireTokenPopup({ scopes: ["Files.ReadWrite"] });
         return resp.accessToken;
     }
@@ -34,11 +30,11 @@ async function getAuthToken() {
 
 document.getElementById('loginBtn').onclick = async () => {
     try {
-        const loginResponse = await msalInstance.loginPopup({ scopes: ["user.read", "Files.ReadWrite"] });
-        document.getElementById('mensaje').innerText = "Conectado: " + loginResponse.account.username;
+        await msalInstance.loginPopup({ scopes: ["user.read", "Files.ReadWrite"] });
+        document.getElementById('mensaje').innerText = "Conectado correctamente.";
         await leerExcel();
         navegar('menu');
-    } catch (err) { alert("Error al conectar: " + err.message); }
+    } catch (err) { alert("Error de Login: " + err.message); }
 };
 
 // ==========================================
@@ -46,8 +42,8 @@ document.getElementById('loginBtn').onclick = async () => {
 // ==========================================
 function navegar(pantalla) {
     const secciones = ['seccion-login', 'seccion-menu', 'seccion-consulta-tablas', 'seccion-registro-ventas', 'seccion-gestion-facturas'];
-    secciones.forEach(s => {
-        const el = document.getElementById(s);
+    secciones.forEach(id => {
+        const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
     
@@ -56,7 +52,7 @@ function navegar(pantalla) {
         destino.style.display = 'block';
         if (pantalla === 'registro-ventas') {
             document.getElementById('contenedor-productos').innerHTML = '';
-            agregarFilaProducto();
+            agregarFilaProducto(); // Inicia con una fila vacía
         }
     }
 }
@@ -65,237 +61,178 @@ function agregarFilaProducto() {
     const contenedor = document.getElementById('contenedor-productos');
     const div = document.createElement('div');
     div.className = 'fila-producto';
+    div.style.position = 'relative';
     div.innerHTML = `
-        <button type="button" onclick="this.parentElement.remove()" style="position:absolute; right:5px; top:5px; background:none; border:none; color:red; cursor:pointer; font-weight:bold;">✕</button>
+        <button type="button" onclick="this.parentElement.remove()" style="position:absolute; right:5px; top:5px; color:red; background:none; border:none; cursor:pointer;">✕</button>
         <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:8px; margin-bottom:10px;">
-            <input type="text" class="p_nombre" placeholder="Nombre Producto" required style="width:100%;">
-            <input type="number" class="p_cantidad" placeholder="Cant." min="1" value="1" required style="width:100%;">
-            <input type="number" class="p_precio" placeholder="Precio (C$)" required style="width:100%;">
+            <input type="text" class="p_nombre" placeholder="Producto" required>
+            <input type="number" class="p_cantidad" value="1" min="1" required>
+            <input type="number" class="p_precio" placeholder="Precio" required>
         </div>
         <div style="display:flex; gap:10px;">
             <input type="number" class="p_descuento" placeholder="Desc. Unidad" value="0" style="flex:1;">
-            <input type="file" class="p_imagen" accept="image/*" style="flex:1.5; font-size:0.8em;">
+            <span style="flex:1.5; font-size:0.8em; color:#666;">(Imagen por defecto: sin_foto.png)</span>
         </div>
     `;
     contenedor.appendChild(div);
 }
 
 // ==========================================
-// 4. CAPA DE DATOS (GRAPH API)
+// 4. LÓGICA DE DATOS (READ/WRITE)
 // ==========================================
 async function leerExcel() {
-    // Corregido el nombre de la tabla Ganancia (basado en tu CSV)
+    // Importante: Asegúrate que en Excel se llamen exactamente así
     const tablas = ["BD_Facturas", "T_PyGanancia", "T_PyMO"]; 
-    const mensajeEl = document.getElementById('mensaje');
-    
-    try {
-        const token = await getAuthToken();
-        mensajeEl.innerText = "Conexión establecida. Accediendo a tablas...";
+    const token = await getAuthToken();
 
-        for (const nombreTabla of tablas) {
-            try {
-                const url = `${graphBaseUrl}/tables/${nombreTabla}/range?t=${Date.now()}`;
-                const response = await fetch(url, { 
-                    headers: { 'Authorization': `Bearer ${token}` } 
-                });
-
-                if (!response.ok) {
-                    console.error(`Error en tabla ${nombreTabla}: ${response.status}`);
-                    continue; // Si una tabla falla, intenta la siguiente
-                }
-
-                const data = await response.json();
-                if (data.values) {
-                    mostrarEnPantalla(nombreTabla, data.values);
-                }
-            } catch (tablaErr) {
-                console.error(`Fallo crítico en tabla ${nombreTabla}:`, tablaErr);
-            }
-        }
-        
-        mensajeEl.innerText = "Datos actualizados";
-    } catch (err) { 
-        console.error("Error global de lectura:", err);
-        mensajeEl.innerText = "Error: No se pudo acceder al archivo. Verifica permisos.";
+    for (const nombre of tablas) {
+        try {
+            const url = `${graphBaseUrl}/tables/${nombre}/range?t=${Date.now()}`;
+            const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            const data = await resp.json();
+            if (data.values) mostrarEnPantalla(nombre, data.values);
+        } catch (err) { console.error(`Error en ${nombre}:`, err); }
     }
 }
 
 async function escribirFilas(nombreTabla, filas) {
     const token = await getAuthToken();
     const url = `${graphBaseUrl}/tables/${nombreTabla}/rows`;
-    const response = await fetch(url, {
+    const resp = await fetch(url, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ values: filas })
     });
-    return response.ok;
+    return resp.ok;
 }
 
 // ==========================================
-// 5. LÓGICA DE NEGOCIO (VENTAS Y FACTURACIÓN)
+// 5. PROCESO DE VENTA
 // ==========================================
 document.getElementById('formVentas').onsubmit = async (e) => {
     e.preventDefault();
     const btn = e.submitter;
     btn.disabled = true;
+    document.getElementById('mensaje').innerText = "Guardando venta...";
 
     try {
         const token = await getAuthToken();
         
-        // 1. Correlativo
-        const respC = await fetch(`${graphBaseUrl}/tables/BD_Facturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
-        const dataC = await respC.json();
+        // 1. Obtener correlativo
+        const resC = await fetch(`${graphBaseUrl}/tables/BD_Facturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const dataC = await resC.json();
         let proxId = 1;
         if (dataC.values && dataC.values.length > 1) {
             const ids = dataC.values.slice(1).map(f => parseInt(f[0].toString().substring(4)) || 0);
             proxId = Math.max(...ids) + 1;
         }
-
         const facturaID = `${new Date().getFullYear()}${proxId.toString().padStart(4, '0')}`;
+
+        // 2. Procesar productos del formulario
         const filasDetalle = [];
         const datosVisual = [];
         let sumaSubtotales = 0;
 
-        // 2. Procesar productos
-        for (let fila of document.querySelectorAll('.fila-producto')) {
+        document.querySelectorAll('.fila-producto').forEach(fila => {
             const nombre = fila.querySelector('.p_nombre').value;
             const cant = parseInt(fila.querySelector('.p_cantidad').value);
             const precio = parseFloat(fila.querySelector('.p_precio').value);
-            const descP = parseFloat(fila.querySelector('.p_descuento').value) || 0;
-            const subtotal = (cant * precio) - descP;
+            const desc = parseFloat(fila.querySelector('.p_descuento').value) || 0;
+            const subtotal = (cant * precio) - desc;
 
-            filasDetalle.push([facturaID, nombre, cant, precio, descP, subtotal, "sin_foto.png"]);
-            datosVisual.push({ Producto: nombre, Cantidad: cant, Desc_Prod: descP, Subtotal: subtotal, Imagen_Producto: "" });
+            filasDetalle.push([facturaID, nombre, cant, precio, desc, subtotal, "sin_foto.png"]);
+            datosVisual.push({ Producto: nombre, Cantidad: cant, Desc_Prod: desc, Subtotal: subtotal });
             sumaSubtotales += subtotal;
-        }
+        });
 
         const envio = parseFloat(document.getElementById('v_envio').value) || 0;
         const descG = parseFloat(document.getElementById('v_desc_global').value) || 0;
-        const totalFinal = sumaSubtotales + envio - descG;
+        const totalF = sumaSubtotales + envio - descG;
 
-        // 3. Guardar
+        // 3. Guardar en Excel
         await escribirFilas("BD_Factura_Detalle", filasDetalle);
-        await escribirFilas("BD_Facturas", [[facturaID, document.getElementById('v_fecha').value, document.getElementById('v_cliente').value, envio, descG, totalFinal, "Activo"]]);
+        await escribirFilas("BD_Facturas", [[facturaID, document.getElementById('v_fecha').value, document.getElementById('v_cliente').value, envio, descG, totalF, "Activo"]]);
 
-        generarFactura({ Factura_ID: facturaID, Cliente: document.getElementById('v_cliente').value, Envio: envio, Desc_Global: descG, Total_Factura: totalFinal, detalles: datosVisual });
+        // 4. Mostrar Factura
+        generarFactura({ Factura_ID: facturaID, Cliente: document.getElementById('v_cliente').value, Envio: envio, Desc_Global: descG, Total_Factura: totalF, detalles: datosVisual, Fecha: document.getElementById('v_fecha').value });
         
-        alert("¡Venta registrada con éxito!");
+        alert("Venta guardada exitosamente.");
         e.target.reset();
+        await leerExcel();
         navegar('menu');
-    } catch (err) { alert("Error: " + err.message); }
+    } catch (err) { alert("Error al guardar: " + err.message); }
+    
     btn.disabled = false;
+    document.getElementById('mensaje').innerText = "Listo.";
 };
+
+// ==========================================
+// 6. RENDERIZADO Y CONSULTAS
+// ==========================================
+function mostrarEnPantalla(nombre, valores) {
+    const ids = { 'BD_Facturas': 'tabla-ventas', 'T_PyGanancia': 'tabla-ganancia', 'T_PyMO': 'tabla-mo' };
+    const contenedor = document.getElementById(ids[nombre]);
+    if (!contenedor || !valores) return;
+
+    let html = `<h4>${nombre}</h4><div style="overflow-x:auto;"><table border="1" style="width:100%; border-collapse:collapse; background:white; font-size:12px;">`;
+    valores.forEach((fila, i) => {
+        const estilo = i === 0 ? "background:#8d6e63; color:white;" : "";
+        html += `<tr style="${estilo}">`;
+        fila.forEach(celda => html += `<td style="padding:8px; border:1px solid #ddd;">${celda ?? ''}</td>`);
+        if (nombre === 'BD_Facturas' && i > 0 && fila[0]) {
+            html += `<td><button onclick="reimprimirFacturaRelacional('${fila[0]}')">🖨️</button></td>`;
+        } else if (i === 0 && nombre === 'BD_Facturas') { html += `<td>Acción</td>`; }
+        html += '</tr>';
+    });
+    contenedor.innerHTML = html + '</table></div>';
+}
 
 async function reimprimirFacturaRelacional(idFactura) {
     try {
         const token = await getAuthToken();
-        const respC = await fetch(`${graphBaseUrl}/tables/BD_Facturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
-        const dataC = await respC.json();
-        const filaC = dataC.values.find(f => f[0].toString() === idFactura.toString());
+        const resC = await fetch(`${graphBaseUrl}/tables/BD_Facturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const dC = await resC.json();
+        const fC = dC.values.find(f => f[0] && f[0].toString() === idFactura.toString());
 
-        const respD = await fetch(`${graphBaseUrl}/tables/BD_Factura_Detalle/range`, { headers: { 'Authorization': `Bearer ${token}` } });
-        const dataD = await respD.json();
-        const filasD = dataD.values.filter(f => f[0].toString() === idFactura.toString());
+        const resD = await fetch(`${graphBaseUrl}/tables/BD_Factura_Detalle/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const dD = await resD.json();
+        const fD = dD.values.filter(f => f[0] && f[0].toString() === idFactura.toString());
 
-        const detalles = filasD.map(f => ({ Producto: f[1], Cantidad: f[2], Desc_Prod: f[4], Subtotal: f[5], Imagen_Producto: "" }));
-
-        generarFactura({ Factura_ID: filaC[0], Cliente: filaC[2], Envio: filaC[3], Desc_Global: filaC[4], Total_Factura: filaC[5], detalles });
-    } catch (err) { alert("Error al reimprimir: " + err.message); }
-}
-
-// ==========================================
-// 6. RENDERIZADO (UI COMPONENTS)
-// ==========================================
-function mostrarEnPantalla(nombre, valores) {
-    // Mapeo exacto entre nombre de tabla en Excel e ID en el HTML
-    const mapeoContenedores = { 
-        'BD_Facturas': 'tabla-ventas', 
-        'T_PyGanacia': 'tabla-ganancia', // Asegúrate que coincida con el Excel
-        'T_PyMO': 'tabla-mo' 
-    };
-
-    const idContenedor = mapeoContenedores[nombre];
-    const contenedor = document.getElementById(idContenedor);
-
-    if (!contenedor) {
-        console.warn(`No se encontró contenedor para la tabla: ${nombre}`);
-        return;
-    }
-
-    if (!valores || valores.length === 0) {
-        contenedor.innerHTML = `<p>La tabla ${nombre} está vacía.</p>`;
-        return;
-    }
-
-    let html = `<div class="tabla-contenedor">
-                    <strong style="color:#5d4037;">${nombre.replace('T_Py', 'Resumen ')}</strong>
-                    <table border="1" style="width:100%; border-collapse:collapse; margin-top:10px; background:white; font-size:0.85em;">`;
-    
-    valores.forEach((fila, i) => {
-        // Estilo para encabezados
-        const estiloFila = i === 0 ? 'background:#8d6e63; color:white; font-weight:bold;' : '';
-        html += `<tr style="${estiloFila}">`;
-        
-        fila.forEach(celda => {
-            html += `<td style="padding:8px; border:1px solid #ddd;">${celda !== null ? celda : ''}</td>`;
+        generarFactura({
+            Factura_ID: fC[0], Fecha: fC[1], Cliente: fC[2], Envio: fC[3], Desc_Global: fC[4], Total_Factura: fC[5],
+            detalles: fD.map(f => ({ Producto: f[1], Cantidad: f[2], Desc_Prod: f[4], Subtotal: f[5] }))
         });
-
-        // Botón de acción solo para facturas
-        if (nombre === 'BD_Facturas' && i > 0) {
-            html += `<td style="text-align:center;"><button onclick="reimprimirFacturaRelacional('${fila[0]}')" style="padding:2px 8px;">🖨️</button></td>`;
-        } else if (i === 0 && nombre === 'BD_Facturas') {
-            html += `<td>Acción</td>`;
-        }
-        
-        html += '</tr>';
-    });
-
-    html += '</table></div>';
-    contenedor.innerHTML = html;
+    } catch (e) { alert("Error al buscar factura."); }
 }
 
-function generarFactura(datos) {
-    const contenedor = document.getElementById('detalle-factura');
-    const n = (val) => parseFloat(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    
-    const filasHTML = datos.detalles.map(d => `
+function generarFactura(d) {
+    const n = v => parseFloat(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
+    const filas = d.detalles.map(it => `
         <tr>
-            <td style="padding:10px; border-bottom:1px solid #eee;">
-                ${d.Cantidad}x ${d.Producto}
-                ${d.Desc_Prod > 0 ? `<br><small style="color:red;">Desc: -${n(d.Desc_Prod)}</small>` : ''}
-            </td>
-            <td style="padding:10px; text-align:right; border-bottom:1px solid #eee;">${n(d.Subtotal)}</td>
+            <td style="padding:8px; border-bottom:1px solid #eee;">${it.Cantidad}x ${it.Producto}</td>
+            <td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">${n(it.Subtotal)}</td>
         </tr>
     `).join('');
 
-    contenedor.innerHTML = `
-        <div style="display:flex; justify-content:space-between; margin-bottom:15px; background:#f9f9f9; padding:10px; border-radius:5px;">
-            <span><strong>Factura N°:</strong> ${datos.Factura_ID}</span>
-            <span><strong>Fecha:</strong> ${new Date().toLocaleDateString()}</span>
-        </div>
-        <div style="border-left: 4px solid #8d6e63; padding: 10px; margin-bottom: 20px;">
-            <strong>Cliente:</strong> ${datos.Cliente}
-        </div>
+    document.getElementById('detalle-factura').innerHTML = `
+        <div style="margin-bottom:15px;"><strong>N°:</strong> ${d.Factura_ID} | <strong>Fecha:</strong> ${d.Fecha}</div>
+        <div style="margin-bottom:15px; border-left:3px solid #8d6e63; padding-left:10px;"><strong>Cliente:</strong> ${d.Cliente}</div>
         <table style="width:100%; border-collapse:collapse;">
-            <tr style="background:#f4f4f4;">
-                <th style="text-align:left; padding:10px;">DESCRIPCIÓN</th>
-                <th style="text-align:right; padding:10px;">SUBTOTAL</th>
-            </tr>
-            ${filasHTML}
+            <thead><tr style="background:#f4f4f4;"><th style="text-align:left; padding:8px;">Producto</th><th style="text-align:right; padding:8px;">Subtotal</th></tr></thead>
+            <tbody>${filas}</tbody>
         </table>
-        <div style="margin-left:auto; width:60%; border-top:2px solid #5d4037; margin-top:10px; padding-top:10px;">
-            <div style="display:flex; justify-content:space-between;"><span>Envío:</span> <span>${n(datos.Envio)}</span></div>
-            <div style="display:flex; justify-content:space-between; font-weight:bold;"><span>TOTAL:</span> <span>C$ ${n(datos.Total_Factura)}</span></div>
+        <div style="text-align:right; margin-top:15px; border-top:2px solid #8d6e63; padding-top:10px;">
+            <p style="margin:2px;">Envío: C$ ${n(d.Envio)}</p>
+            <p style="margin:2px;">Desc. Global: -C$ ${n(d.Desc_Global)}</p>
+            <h3 style="margin:5px 0; color:#5d4037;">TOTAL: C$ ${n(d.Total_Factura)}</h3>
         </div>
     `;
     document.getElementById('modal-factura').style.display = 'block';
 }
 
 async function refrescarTablasManual() {
-    try {
-        document.getElementById('mensaje').innerText = "Actualizando...";
-        await leerExcel();
-        alert("Tablas actualizadas.");
-    } catch (err) { alert("Error: " + err.message); }
+    document.getElementById('mensaje').innerText = "Actualizando...";
+    await leerExcel();
+    alert("Datos actualizados.");
 }
-
+//agrego para validar último commit "refactorización con gem OligarApp"

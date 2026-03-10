@@ -207,20 +207,51 @@ async function reimprimirFacturaRelacional(idFactura) {
 // 6. RENDERIZADO (UI COMPONENTS)
 // ==========================================
 function mostrarEnPantalla(nombre, valores) {
-    const ids = { 'BD_Facturas': 'tabla-ventas', 'T_PyGanancia': 'tabla-ganancia', 'T_PyMO': 'tabla-mo' };
-    const contenedor = document.getElementById(ids[nombre]);
-    if (!contenedor || !valores) return;
+    // Mapeo exacto entre nombre de tabla en Excel e ID en el HTML
+    const mapeoContenedores = { 
+        'BD_Facturas': 'tabla-ventas', 
+        'T_PyGanacia': 'tabla-ganancia', // Asegúrate que coincida con el Excel
+        'T_PyMO': 'tabla-mo' 
+    };
 
-    let html = `<div class="tabla-contenedor"><strong>${nombre}</strong><table border="1" style="width:100%; border-collapse:collapse; margin-top:10px; background:white;">`;
+    const idContenedor = mapeoContenedores[nombre];
+    const contenedor = document.getElementById(idContenedor);
+
+    if (!contenedor) {
+        console.warn(`No se encontró contenedor para la tabla: ${nombre}`);
+        return;
+    }
+
+    if (!valores || valores.length === 0) {
+        contenedor.innerHTML = `<p>La tabla ${nombre} está vacía.</p>`;
+        return;
+    }
+
+    let html = `<div class="tabla-contenedor">
+                    <strong style="color:#5d4037;">${nombre.replace('T_Py', 'Resumen ')}</strong>
+                    <table border="1" style="width:100%; border-collapse:collapse; margin-top:10px; background:white; font-size:0.85em;">`;
+    
     valores.forEach((fila, i) => {
-        html += `<tr style="${i === 0 ? 'background:#eee; font-weight:bold;' : ''}">`;
-        fila.forEach(celda => html += `<td style="padding:8px; border:1px solid #ddd;">${celda || ''}</td>`);
+        // Estilo para encabezados
+        const estiloFila = i === 0 ? 'background:#8d6e63; color:white; font-weight:bold;' : '';
+        html += `<tr style="${estiloFila}">`;
+        
+        fila.forEach(celda => {
+            html += `<td style="padding:8px; border:1px solid #ddd;">${celda !== null ? celda : ''}</td>`;
+        });
+
+        // Botón de acción solo para facturas
         if (nombre === 'BD_Facturas' && i > 0) {
-            html += `<td><button onclick="reimprimirFacturaRelacional('${fila[0]}')">🖨️</button></td>`;
+            html += `<td style="text-align:center;"><button onclick="reimprimirFacturaRelacional('${fila[0]}')" style="padding:2px 8px;">🖨️</button></td>`;
+        } else if (i === 0 && nombre === 'BD_Facturas') {
+            html += `<td>Acción</td>`;
         }
+        
         html += '</tr>';
     });
-    contenedor.innerHTML = html + '</table></div>';
+
+    html += '</table></div>';
+    contenedor.innerHTML = html;
 }
 
 function generarFactura(datos) {

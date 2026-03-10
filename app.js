@@ -1,164 +1,184 @@
+// ==========================================
+// 1. CONFIGURACIÓN Y CONSTANTES
+// ==========================================
 const msalConfig = {
     auth: {
         clientId: "894b1f45-66d7-4b1a-995d-04876954ed54",
         authority: "https://login.microsoftonline.com/common",
-        //redirectUri: window.location.origin
         redirectUri: "https://ronogon1.github.io/OligarApp/"
     }
 };
 
-// Estas variables van afuera del objeto, al mismo nivel
-const rutaBase = "LIBRERIAS/Desktop/VARIOS/OligarApp";
-const nombreArchivo = "OligarApp.xlsx";
-
+const fileId = "56163dd91d08f884";
+const graphBaseUrl = `https://graph.microsoft.com/v1.0/me/drive/items/${fileId}/workbook`;
 const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-// --- AUTENTICACIÓN ---
+// ==========================================
+// 2. AUTENTICACIÓN Y TOKEN
+// ==========================================
+async function getAuthToken() {
+    const account = msalInstance.getAllAccounts()[0];
+    if (!account) throw new Error("Sesión expirada o no iniciada.");
+
+    try {
+        const resp = await msalInstance.acquireTokenSilent({ 
+            scopes: ["Files.ReadWrite"], 
+            account: account 
+        });
+        return resp.accessToken;
+    } catch (error) {
+        const resp = await msalInstance.acquireTokenPopup({ scopes: ["Files.ReadWrite"] });
+        return resp.accessToken;
+    }
+}
+
 document.getElementById('loginBtn').onclick = async () => {
     try {
         const loginResponse = await msalInstance.loginPopup({ scopes: ["user.read", "Files.ReadWrite"] });
-        document.getElementById('mensaje').innerText = "Conectado. Cargando datos...";
-        await leerExcel(loginResponse.accessToken);
+        document.getElementById('mensaje').innerText = "Conectado: " + loginResponse.account.username;
+        await leerExcel();
         navegar('menu');
     } catch (err) { alert("Error al conectar: " + err.message); }
 };
 
-// --- NAVEGACIÓN ---
+// ==========================================
+// 3. NAVEGACIÓN Y UI
+// ==========================================
 function navegar(pantalla) {
-    const secciones = ['seccion-login', 'seccion-menu', 'seccion-consulta-tablas', 'seccion-registro-ventas'];
+    const secciones = ['seccion-login', 'seccion-menu', 'seccion-consulta-tablas', 'seccion-registro-ventas', 'seccion-gestion-facturas'];
     secciones.forEach(s => {
         const el = document.getElementById(s);
         if (el) el.style.display = 'none';
     });
-    const idSect = 'seccion-' + pantalla;
-    if (document.getElementById(idSect)) document.getElementById(idSect).style.display = 'block';
-}
-
-// --- LECTURA DE EXCEL ---
-async function leerExcel(token) {
-    const fieldId = "56163dd91d08f884"; // traido desde Microsoft Graph agregando la ruta del archivo
-
-    const rutaBase = "LIBRERIAS/Desktop/VARIOS/OligarApp/OligarApp.xlsx"; // posiblemente se deje de usar
-    // Añadimos un parámetro aleatorio al final de la ruta para evitar el caché del navegador
-    const cacheBuster = `?t=${Date.now()}`;
-    const tablas = ["BD_Facturas", "T_PyGanancia", "T_PyMO"]; 
-
-    for (const nombreTabla of tablas) {
-        try {
-            // Se solicita el rango de la tabla específicamente, se usa el campo tomado de MS Graph
-            const url = `https://graph.microsoft.com/v1.0/me/drive/items/${fileId}/workbook/tables/${nombreTabla}/range${cacheBuster}`;
-            
-            const response = await fetch(url, { 
-                headers: { 'Authorization': `Bearer ${token}`, 'Cache-Control': 'no-cache' } 
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                // Si la tabla tiene datos (más de la fila de encabezado)
-                if (data.values && data.values.length > 0) {
-                    mostrarEnPantalla(nombreTabla, data.values);
-                }
-            } else {
-                console.error(`Error al leer tabla ${nombreTabla}:`, response.statusText);
-            }
-        } catch (err) { 
-            console.error(`Error de red en ${nombreTabla}:`, err); 
+    
+    const destino = document.getElementById('seccion-' + pantalla);
+    if (destino) {
+        destino.style.display = 'block';
+        if (pantalla === 'registro-ventas') {
+            document.getElementById('contenedor-productos').innerHTML = '';
+            agregarFilaProducto();
         }
     }
 }
 
-// --- REGISTRO DE VENTAS (GUARDADO DOBLE) ---
+function agregarFilaProducto() {
+    const contenedor = document.getElementById('contenedor-productos');
+    const div = document.createElement('div');
+    div.className = 'fila-producto';
+    div.innerHTML = `
+        <button type="button" onclick="this.parentElement.remove()" style="position:absolute; right:5px; top:5px; background:none; border:none; color:red; cursor:pointer; font-weight:bold;">✕</button>
+        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:8px; margin-bottom:10px;">
+            <input type="text" class="p_nombre" placeholder="Nombre Producto" required style="width:100%;">
+            <input type="number" class="p_cantidad" placeholder="Cant." min="1" value="1" required style="width:100%;">
+            <input type="number" class="p_precio" placeholder="Precio (C$)" required style="width:100%;">
+        </div>
+        <div style="display:flex; gap:10px;">
+            <input type="number" class="p_descuento" placeholder="Desc. Unidad" value="0" style="flex:1;">
+            <input type="file" class="p_imagen" accept="image/*" style="flex:1.5; font-size:0.8em;">
+        </div>
+    `;
+    contenedor.appendChild(div);
+}
+
+// ==========================================
+// 4. CAPA DE DATOS (GRAPH API)
+// ==========================================
+async function leerExcel() {
+    // Corregido el nombre de la tabla Ganancia (basado en tu CSV)
+    const tablas = ["BD_Facturas", "T_PyGanancia", "T_PyMO"]; 
+    const mensajeEl = document.getElementById('mensaje');
+    
+    try {
+        const token = await getAuthToken();
+        mensajeEl.innerText = "Conexión establecida. Accediendo a tablas...";
+
+        for (const nombreTabla of tablas) {
+            try {
+                const url = `${graphBaseUrl}/tables/${nombreTabla}/range?t=${Date.now()}`;
+                const response = await fetch(url, { 
+                    headers: { 'Authorization': `Bearer ${token}` } 
+                });
+
+                if (!response.ok) {
+                    console.error(`Error en tabla ${nombreTabla}: ${response.status}`);
+                    continue; // Si una tabla falla, intenta la siguiente
+                }
+
+                const data = await response.json();
+                if (data.values) {
+                    mostrarEnPantalla(nombreTabla, data.values);
+                }
+            } catch (tablaErr) {
+                console.error(`Fallo crítico en tabla ${nombreTabla}:`, tablaErr);
+            }
+        }
+        
+        mensajeEl.innerText = "Datos actualizados";
+    } catch (err) { 
+        console.error("Error global de lectura:", err);
+        mensajeEl.innerText = "Error: No se pudo acceder al archivo. Verifica permisos.";
+    }
+}
+
+async function escribirFilas(nombreTabla, filas) {
+    const token = await getAuthToken();
+    const url = `${graphBaseUrl}/tables/${nombreTabla}/rows`;
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ values: filas })
+    });
+    return response.ok;
+}
+
+// ==========================================
+// 5. LÓGICA DE NEGOCIO (VENTAS Y FACTURACIÓN)
+// ==========================================
 document.getElementById('formVentas').onsubmit = async (e) => {
     e.preventDefault();
     const btn = e.submitter;
     btn.disabled = true;
 
     try {
-        const account = msalInstance.getAllAccounts()[0];
-        const tokenResp = await msalInstance.acquireTokenSilent({ scopes: ["Files.ReadWrite"], account: account });
-        const token = tokenResp.accessToken;
-
-        // 1. LEER LA TABLA REAL (Corregimos la ruta incluyendo el nombre del archivo)
-        const respContador = await fetch(`https://graph.microsoft.com/v1.0/ronogon/drive/root:/${rutaBase}/OligarApp.xlsx:/workbook/tables/BD_Facturas/range`, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
-        });
-        const dataContador = await respContador.json();
+        const token = await getAuthToken();
         
-        let nuevoCorrelativoNum = 1;
-
-        // 2. BUSCAR EL VALOR MÁXIMO REAL
-        if (dataContador.values && dataContador.values.length > 1) {
-            // Extraemos la primera columna (Factura_ID), saltando el encabezado [0]
-            const idsExistentes = dataContador.values.slice(1).map(fila => {
-                // El ID viene como "20260001", tomamos los últimos 4 dígitos
-                const idTexto = fila[0].toString();
-                return parseInt(idTexto.substring(4)) || 0;
-            });
-            nuevoCorrelativoNum = Math.max(...idsExistentes) + 1;
+        // 1. Correlativo
+        const respC = await fetch(`${graphBaseUrl}/tables/BD_Facturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const dataC = await respC.json();
+        let proxId = 1;
+        if (dataC.values && dataC.values.length > 1) {
+            const ids = dataC.values.slice(1).map(f => parseInt(f[0].toString().substring(4)) || 0);
+            proxId = Math.max(...ids) + 1;
         }
 
-        const nuevoCorrelativo = nuevoCorrelativoNum.toString().padStart(4, '0');
-        const fechaVenta = document.getElementById('v_fecha').value; 
-        const añoActual = fechaVenta ? fechaVenta.split('-')[0] : "2026";
-        const facturaID = `${añoActual}${nuevoCorrelativo}`;
-         
-        const filasProd = document.querySelectorAll('.fila-producto');
-        
-        let detalleExcel = [];
-        let datosFacturaVisual = [];
+        const facturaID = `${new Date().getFullYear()}${proxId.toString().padStart(4, '0')}`;
+        const filasDetalle = [];
+        const datosVisual = [];
         let sumaSubtotales = 0;
 
-        for (let fila of filasProd) {
+        // 2. Procesar productos
+        for (let fila of document.querySelectorAll('.fila-producto')) {
             const nombre = fila.querySelector('.p_nombre').value;
             const cant = parseInt(fila.querySelector('.p_cantidad').value);
             const precio = parseFloat(fila.querySelector('.p_precio').value);
             const descP = parseFloat(fila.querySelector('.p_descuento').value) || 0;
             const subtotal = (cant * precio) - descP;
-            const archivo = fila.querySelector('.p_imagen').files[0];
 
-            let nombreImg = "sin_foto.png";
-            let urlLocal = "";
-
-            if (archivo) {
-                nombreImg = `${facturaID}_${nombre.replace(/\s+/g, '_')}.jpg`;
-                urlLocal = URL.createObjectURL(archivo);
-                await fetch(`https://graph.microsoft.com/v1.0/ronogon/drive/root:/LIBRERIAS/Desktop/VARIOS/OligarApp/Productos/${nombreImg}:/content`, {
-                    method: 'PUT', headers: { 'Authorization': `Bearer ${token}` }, body: archivo
-                });
-            }
-
+            filasDetalle.push([facturaID, nombre, cant, precio, descP, subtotal, "sin_foto.png"]);
+            datosVisual.push({ Producto: nombre, Cantidad: cant, Desc_Prod: descP, Subtotal: subtotal, Imagen_Producto: "" });
             sumaSubtotales += subtotal;
-            // Coincide con: Factura_ID, Producto, Cantidad, Precio_Unit, Desc_Prod, Subtotal, Imagen_Producto
-            detalleExcel.push([facturaID, nombre, cant, precio, descP, subtotal, nombreImg]);
-            datosFacturaVisual.push({ Producto: nombre, Cantidad: cant, Desc_Prod: descP, Subtotal: subtotal, Imagen_Producto: urlLocal });
         }
 
         const envio = parseFloat(document.getElementById('v_envio').value) || 0;
         const descG = parseFloat(document.getElementById('v_desc_global').value) || 0;
         const totalFinal = sumaSubtotales + envio - descG;
 
-        // Guardar Detalle
-        await fetch(`https://graph.microsoft.com/v1.0/ronogon/drive/root:/LIBRERIAS/Desktop/VARIOS/OligarApp/OligarApp.xlsx:/workbook/tables/BD_Factura_Detalle/rows`, {
-            method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ values: detalleExcel })
-        });
+        // 3. Guardar
+        await escribirFilas("BD_Factura_Detalle", filasDetalle);
+        await escribirFilas("BD_Facturas", [[facturaID, document.getElementById('v_fecha').value, document.getElementById('v_cliente').value, envio, descG, totalFinal, "Activo"]]);
 
-        // Guardar Cabecera (Factura_ID, Fecha, Cliente, Envio, Desc_Global, Total_Factura, Estado)
-        const filaCabecera = [[facturaID, document.getElementById('v_fecha').value, document.getElementById('v_cliente').value, envio, descG, totalFinal, "Activo"]];
-        await fetch(`https://graph.microsoft.com/v1.0/ronogon/drive/root:/LIBRERIAS/Desktop/VARIOS/OligarApp/OligarApp.xlsx:/workbook/tables/BD_Facturas/rows`, {
-            method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ values: filaCabecera })
-        });
-
-        generarFactura({
-            Factura_ID: facturaID,
-            Cliente: document.getElementById('v_cliente').value,
-            Envio: envio,
-            Desc_Global: descG,
-            Total_Factura: totalFinal,
-            detalles: datosFacturaVisual
-        });
-
+        generarFactura({ Factura_ID: facturaID, Cliente: document.getElementById('v_cliente').value, Envio: envio, Desc_Global: descG, Total_Factura: totalFinal, detalles: datosVisual });
+        
         alert("¡Venta registrada con éxito!");
         e.target.reset();
         navegar('menu');
@@ -166,79 +186,26 @@ document.getElementById('formVentas').onsubmit = async (e) => {
     btn.disabled = false;
 };
 
-// --- GENERAR FACTURA VISUAL ---
-function generarFactura(datos) {
-    const contenedor = document.getElementById('detalle-factura');
-    
-    // Función simple para mostrar números con 2 decimales sin el símbolo C$ en cada fila
-    const n = (val) => {
-        return parseFloat(val).toLocaleString('en-US', { 
-            minimumFractionDigits: 2, 
-            maximumFractionDigits: 2 
-        });
-    };
-    // Solo para el total final usamos el formato de moneda
-    const formatoMoneda = (val) => "C$ " + parseFloat(val).toLocaleString('en-US', { minimumFractionDigits: 2 });
+async function reimprimirFacturaRelacional(idFactura) {
+    try {
+        const token = await getAuthToken();
+        const respC = await fetch(`${graphBaseUrl}/tables/BD_Facturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const dataC = await respC.json();
+        const filaC = dataC.values.find(f => f[0].toString() === idFactura.toString());
 
-    const filasHTML = datos.detalles.map(d => `
-        <tr>
-            <td style="padding:10px; border-bottom:1px solid #eee;">
-                ${d.Cantidad}x ${d.Producto}
-                ${d.Desc_Prod > 0 ? `
-                    <br>
-                    <small style="color:#333;">Precio: ${n(parseFloat(d.Subtotal) + parseFloat(d.Desc_Prod))}</small>
-                    <small style="color:red; margin-left: 8px;">Desc: -${n(d.Desc_Prod)}</small>
-                ` : ''}
-            </td>
-            <td style="padding:10px; text-align:right; border-bottom:1px solid #eee;">${n(d.Subtotal)}</td>
-        </tr>
-    `).join('');
+        const respD = await fetch(`${graphBaseUrl}/tables/BD_Factura_Detalle/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const dataD = await respD.json();
+        const filasD = dataD.values.filter(f => f[0].toString() === idFactura.toString());
 
-    contenedor.innerHTML = `
-        <div style="display:flex; justify-content:space-between; margin-bottom:15px; background:#f9f9f9; padding:10px; border-radius:5px; font-size:1em;">
-            <span><strong>Factura N°:</strong> ${datos.Factura_ID}</span>
-            <span><strong>Fecha:</strong> ${new Date().toLocaleDateString('es-ES', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
-            })}</span>
-        </div>
-        <div style="
-            display: flex; 
-            justify-content: flex-start; 
-            margin-bottom: 20px; 
-            background-color: #fff; 
-            border-radius: 4px; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.03); /* Sombra muy tenue */
-        ">
-            <div style="text-align: left; border-left: 4px solid #8d6e63; padding: 10px 15px;">
-                <span style="font-size: 1.05em; color: #333;">
-                    <strong style="color: #8d6e63;">Cliente:</strong> ${datos.Cliente}
-                </span>
-            </div>
-        </div>
-        <table style="width:100%; border-collapse:collapse; margin-bottom:15px;">
-            <tr style="background:#f4f4f4; font-size:0.8em;">
-                <th style="text-align:left; padding:10px;">DESCRIPCIÓN</th>
-                <th style="text-align:right; padding:10px;">SUBTOTAL</th>
-            </tr>
-            ${filasHTML}
-        </table>
-        <div style="margin-left:auto; width:60%; font-size:0.9em; border-top:2px solid #5d4037; padding-top:10px;">
-            <div style="display:flex; justify-content:space-between;"><span>Envío:</span> <span>${n(datos.Envio)}</span></div>
-            ${datos.Desc_Global > 0 ? `<div style="display:flex; justify-content:space-between; color:red;"><span>Desc. Global:</span> <span>-${n(datos.Desc_Global)}</span></div>` : ''}
-            <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1em; margin-top:5px; border-top: 1px solid #ddd; padding-top:5px;">
-                <span>TOTAL:</span> <span>${formatoMoneda(datos.Total_Factura)}</span>
-            </div>
-        </div>
-        <div style="margin-top:20px; display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
-            ${datos.detalles.map(d => d.Imagen_Producto ? `<div style="text-align:center;"><img src="${d.Imagen_Producto}" style="width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:5px;"><p style="font-size:0.6em; color:#777;">${d.Producto}</p></div>` : '').join('')}
-        </div>
-    `;
-    document.getElementById('modal-factura').style.display = 'block';
+        const detalles = filasD.map(f => ({ Producto: f[1], Cantidad: f[2], Desc_Prod: f[4], Subtotal: f[5], Imagen_Producto: "" }));
+
+        generarFactura({ Factura_ID: filaC[0], Cliente: filaC[2], Envio: filaC[3], Desc_Global: filaC[4], Total_Factura: filaC[5], detalles });
+    } catch (err) { alert("Error al reimprimir: " + err.message); }
 }
 
-// --- MOSTRAR TABLAS ---
+// ==========================================
+// 6. RENDERIZADO (UI COMPONENTS)
+// ==========================================
 function mostrarEnPantalla(nombre, valores) {
     const ids = { 'BD_Facturas': 'tabla-ventas', 'T_PyGanancia': 'tabla-ganancia', 'T_PyMO': 'tabla-mo' };
     const contenedor = document.getElementById(ids[nombre]);
@@ -256,136 +223,48 @@ function mostrarEnPantalla(nombre, valores) {
     contenedor.innerHTML = html + '</table></div>';
 }
 
-// --- REIMPRESIÓN RELACIONAL ---
-async function reimprimirFacturaRelacional(idFactura) {
-    try {
-        const account = msalInstance.getAllAccounts()[0];
-        const tokenResp = await msalInstance.acquireTokenSilent({ scopes: ["Files.ReadWrite"], account: account });
-        const token = tokenResp.accessToken;
-        const rutaBase = "LIBRERIAS/Desktop/VARIOS/OligarApp/OligarApp.xlsx";
-        const cacheBuster = `?t=${Date.now()}`;
-
-        // 1. Buscar cabecera
-        const respC = await fetch(`https://graph.microsoft.com/v1.0/ronogon/drive/root:/${rutaBase}:/workbook/tables/BD_Facturas/range${cacheBuster}`, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
-        });
-        const dataC = await respC.json();
-        const filaC = dataC.values.find(f => f[0].toString() === idFactura.toString());
-
-        if (!filaC) {
-            alert("No se encontró la cabecera de la factura " + idFactura);
-            return;
-        }
-
-        // 2. Buscar detalles
-        const respD = await fetch(`https://graph.microsoft.com/v1.0/ronogon/drive/root:/${rutaBase}:/workbook/tables/BD_Factura_Detalle/range${cacheBuster}`, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
-        });
-        const dataD = await respD.json();
-        const filasD = dataD.values.filter(f => f[0].toString() === idFactura.toString());
-
-        const productosProcesados = await Promise.all(filasD.map(async (f) => {
-            let urlImg = "";
-            if (f[6] && f[6] !== "sin_foto.png") {
-                try {
-                    const respImg = await fetch(`https://graph.microsoft.com/v1.0/ronogon/drive/root:/LIBRERIAS/Desktop/VARIOS/OligarApp/Productos/${f[6]}:/content`, { 
-                        headers: { 'Authorization': `Bearer ${token}` } 
-                    });
-                    if (respImg.ok) urlImg = URL.createObjectURL(await respImg.blob());
-                } catch (e) { console.log("Error cargando imagen", e); }
-            }
-            return { Producto: f[1], Cantidad: f[2], Desc_Prod: f[4], Subtotal: f[5], Imagen_Producto: urlImg };
-        }));
-
-        generarFactura({ 
-            Factura_ID: filaC[0], 
-            Cliente: filaC[2], 
-            Envio: filaC[3], 
-            Desc_Global: filaC[4], 
-            Total_Factura: filaC[5], 
-            detalles: productosProcesados 
-        });
-
-    } catch (err) { 
-        alert("Error al intentar reimprimir: " + err.message); 
-    }
-}
-
-// Función para añadir filas dinámicas
-function agregarFilaProducto() {
-    const contenedor = document.getElementById('contenedor-productos');
-    const div = document.createElement('div');
-    div.className = 'fila-producto';
-    div.style = "border:1px solid #ddd; padding:15px; border-radius:8px; margin-bottom:15px; background:white; position:relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05);";
+function generarFactura(datos) {
+    const contenedor = document.getElementById('detalle-factura');
+    const n = (val) => parseFloat(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     
-    div.innerHTML = `
-        <button type="button" onclick="this.parentElement.remove()" style="position:absolute; right:5px; top:5px; background:none; border:none; color:red; cursor:pointer; font-weight:bold; font-size:1.2em;">✕</button>
-        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:8px; margin-bottom:10px;">
-            <input type="text" class="p_nombre" placeholder="Nombre del Producto" required style="width:100%;">
-            <input type="number" class="p_cantidad" placeholder="Cant." min="1" value="1" required style="width:100%;">
-            <input type="number" class="p_precio" placeholder="Precio Unit. (C$)" required style="width:100%;">
+    const filasHTML = datos.detalles.map(d => `
+        <tr>
+            <td style="padding:10px; border-bottom:1px solid #eee;">
+                ${d.Cantidad}x ${d.Producto}
+                ${d.Desc_Prod > 0 ? `<br><small style="color:red;">Desc: -${n(d.Desc_Prod)}</small>` : ''}
+            </td>
+            <td style="padding:10px; text-align:right; border-bottom:1px solid #eee;">${n(d.Subtotal)}</td>
+        </tr>
+    `).join('');
+
+    contenedor.innerHTML = `
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px; background:#f9f9f9; padding:10px; border-radius:5px;">
+            <span><strong>Factura N°:</strong> ${datos.Factura_ID}</span>
+            <span><strong>Fecha:</strong> ${new Date().toLocaleDateString()}</span>
         </div>
-        <div style="display:flex; gap:10px; align-items:center;">
-            <div style="flex:1; display:flex; flex-direction:column;">
-                <label style="font-size:0.7em; color:#888; margin-bottom:2px;">Descuento por unidad:</label>
-                <input type="number" class="p_descuento" placeholder="Descuento C$" value="0" style="width:100%;">
-            </div>
-            <div style="flex:1.5; display:flex; flex-direction:column;">
-                <label style="font-size:0.7em; color:#888; margin-bottom:2px;">Imagen del producto:</label>
-                <input type="file" class="p_imagen" accept="image/*" style="font-size:0.8em; width:100%;">
-            </div>
+        <div style="border-left: 4px solid #8d6e63; padding: 10px; margin-bottom: 20px;">
+            <strong>Cliente:</strong> ${datos.Cliente}
+        </div>
+        <table style="width:100%; border-collapse:collapse;">
+            <tr style="background:#f4f4f4;">
+                <th style="text-align:left; padding:10px;">DESCRIPCIÓN</th>
+                <th style="text-align:right; padding:10px;">SUBTOTAL</th>
+            </tr>
+            ${filasHTML}
+        </table>
+        <div style="margin-left:auto; width:60%; border-top:2px solid #5d4037; margin-top:10px; padding-top:10px;">
+            <div style="display:flex; justify-content:space-between;"><span>Envío:</span> <span>${n(datos.Envio)}</span></div>
+            <div style="display:flex; justify-content:space-between; font-weight:bold;"><span>TOTAL:</span> <span>C$ ${n(datos.Total_Factura)}</span></div>
         </div>
     `;
-    contenedor.appendChild(div);
-}
-
-// Corregimos la navegación para que siempre asegure una fila al entrar
-function navegar(pantalla) {
-    const secciones = ['seccion-login', 'seccion-menu', 'seccion-consulta-tablas', 'seccion-registro-ventas', 'seccion-gestion-facturas'];
-    secciones.forEach(s => {
-        const el = document.getElementById(s);
-        if (el) el.style.display = 'none';
-    });
-    
-    const idSect = 'seccion-' + pantalla;
-    const seccionDestino = document.getElementById(idSect);
-    if (seccionDestino) {
-        seccionDestino.style.display = 'block';
-        
-        // Si entramos a registro, limpiamos y añadimos la primera fila
-        if (pantalla === 'registro-ventas') {
-            const cont = document.getElementById('contenedor-productos');
-            cont.innerHTML = ''; // Limpiar previo
-            agregarFilaProducto();
-        }
-    }
+    document.getElementById('modal-factura').style.display = 'block';
 }
 
 async function refrescarTablasManual() {
     try {
-        const account = msalInstance.getAllAccounts()[0];
-        if (!account) {
-            alert("Sesión expirada. Por favor, inicia sesión de nuevo.");
-            return;
-        }
-        
-        // Obtenemos el token silenciosamente
-        const tokenResp = await msalInstance.acquireTokenSilent({
-            scopes: ["Files.ReadWrite"],
-            account: account
-        });
-        
-        // Indicador visual de carga
-        const botones = document.querySelectorAll('button');
-        botones.forEach(b => b.disabled = true);
-        
-        await leerExcel(tokenResp.accessToken);
-        
-        botones.forEach(b => b.disabled = false);
-        alert("Tablas actualizadas correctamente.");
-    } catch (err) { 
-        console.error("Error al refrescar:", err);
-        alert("No se pudo actualizar. Revisa tu conexión.");
-    }
+        document.getElementById('mensaje').innerText = "Actualizando...";
+        await leerExcel();
+        alert("Tablas actualizadas.");
+    } catch (err) { alert("Error: " + err.message); }
 }
 

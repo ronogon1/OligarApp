@@ -83,7 +83,7 @@ function agregarFilaProducto() {
 // ==========================================
 async function leerExcel() {
     
-    const tablas = ["BD_Facturas", "BD_Factura_Detalle"]; 
+    const tablas = ["TFacturas", "TDetalle"]; 
     const token = await getAuthToken();
     const mensajeEl = document.getElementById('mensaje');
 
@@ -161,7 +161,7 @@ document.getElementById('formVentas').onsubmit = async (e) => {
         const token = await getAuthToken();
         
         // 1. Obtener correlativo
-        const resC = await fetch(`${graphBaseUrl}/tables/BD_Facturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const resC = await fetch(`${graphBaseUrl}/tables/TFacturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
         const dataC = await resC.json();
         let proxId = 1;
         if (dataC.values && dataC.values.length > 1) {
@@ -192,8 +192,8 @@ document.getElementById('formVentas').onsubmit = async (e) => {
         const totalF = sumaSubtotales + envio - descG;
 
         // 3. Guardar en Excel
-        await escribirFilas("BD_Factura_Detalle", filasDetalle);
-        await escribirFilas("BD_Facturas", [[facturaID, document.getElementById('v_fecha').value, document.getElementById('v_cliente').value, envio, descG, totalF, "Activo"]]);
+        await escribirFilas("TDetalle", filasDetalle);
+        await escribirFilas("TFacturas", [[facturaID, document.getElementById('v_fecha').value, document.getElementById('v_cliente').value, envio, descG, totalF, "Activo"]]);
 
         // 4. Mostrar Factura
         generarFactura({ Factura_ID: facturaID, Cliente: document.getElementById('v_cliente').value, Envio: envio, Desc_Global: descG, Total_Factura: totalF, detalles: datosVisual, Fecha: document.getElementById('v_fecha').value });
@@ -214,8 +214,8 @@ document.getElementById('formVentas').onsubmit = async (e) => {
 
 function mostrarEnPantalla(nombre, valores) {
   const ids = { 
-    'BD_Facturas': 'tabla-facturas',
-    'BD_Factura_Detalle': 'tabla-factura-detalle'
+    'TFacturas': 'tabla-facturas',
+    'TDetalle': 'tabla-detalle'
   };
 
   const contenedorId = ids[nombre];
@@ -245,7 +245,7 @@ function mostrarEnPantalla(nombre, valores) {
       html += `<td style="padding:8px; border:1px solid #ddd;">${celda ?? ''}</td>`;
     });
 
-    if (nombre === 'BD_Facturas') {
+    if (nombre === 'TFacturas') {
       if (i === 0) {
         html += `<td>Acción</td>`;
       } else if (i > 0 && fila[0]) {
@@ -266,11 +266,11 @@ function mostrarEnPantalla(nombre, valores) {
 async function reimprimirFacturaRelacional(idFactura) {
     try {
         const token = await getAuthToken();
-        const resC = await fetch(`${graphBaseUrl}/tables/BD_Facturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const resC = await fetch(`${graphBaseUrl}/tables/TFacturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
         const dC = await resC.json();
         const fC = dC.values.find(f => f[0] && f[0].toString() === idFactura.toString());
 
-        const resD = await fetch(`${graphBaseUrl}/tables/BD_Factura_Detalle/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const resD = await fetch(`${graphBaseUrl}/tables/TDetalle/range`, { headers: { 'Authorization': `Bearer ${token}` } });
         const dD = await resD.json();
         const fD = dD.values.filter(f => f[0] && f[0].toString() === idFactura.toString());
 

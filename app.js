@@ -87,31 +87,55 @@ async function leerExcel() {
     const token = await getAuthToken();
     const mensajeEl = document.getElementById('mensaje');
 
-    mensajeEl.innerText = "Cargando datos desde Excel...";
+    if (mensajeEl) mensajeEl.innerText = "Cargando datos desde Excel...";
 
     for (const nombre of tablas) {
         try {
             const url = `${graphBaseUrl}/tables/${nombre}/range?t=${Date.now()}`;
-            console.log('Leyendo tabla:', nombre, 'URL:', url);
+            console.log(`[leerExcel] Leyendo tabla: ${nombre}`);
+            console.log(`[leerExcel] URL:`, url)
 
             const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-            
+            console.log(`[leerExcel] Respuesta tabla ${nombre} - status:`, resp.status);
+                      
             if (!resp.ok) {
-                const errorLog = await resp.json();
-                console.error(`Error en tabla ${nombre}:`, errorLog);
-                continue; 
-            }
+                    let errorLog = null;
+                    try {
+                    errorLog = await resp.json();
+                    } catch (e) {
+                    errorLog = { error: "No se pudo parsear JSON de error" };
+                    }
+                    console.error(`[leerExcel] Error en tabla ${nombre}:`, errorLog);
+
+                    if (mensajeEl) {
+                    mensajeEl.innerText = `Error al leer la tabla ${nombre}. Revisa la consola para más detalles.`;
+                    }
+                    continue;
+                }
+
             
             const data = await resp.json();
-            if (data.values) {
-                mostrarEnPantalla(nombre, data.values);
+            console.log(`[leerExcel] Datos recibidos de ${nombre}:`, data);
+
+            
+            if (data && data.values && data.values.length > 0) {
+            mostrarEnPantalla(nombre, data.values);
             } else {
-                console.warn(`Tabla ${nombre} sin valores`);
+            console.warn(`[leerExcel] La tabla ${nombre} no tiene valores (values vacío o undefined).`);
             }
-        } catch (err) { console.error(`Error en ${nombre}:`, err); }
+
+        
+        } catch (err) {
+            console.error(`[leerExcel] Error inesperado al leer ${nombre}:`, err);
+            if (mensajeEl) {
+                mensajeEl.innerText = `Error inesperado leyendo ${nombre}. Ver consola.`;
+            }
+        }
     }
-    mensajeEl.innerText = "Datos cargados.";
+
+    if (mensajeEl) mensajeEl.innerText = "Datos cargados.";
 }
+
 
 async function escribirFilas(nombreTabla, filas) {
     const token = await getAuthToken();
@@ -187,23 +211,57 @@ document.getElementById('formVentas').onsubmit = async (e) => {
 // ==========================================
 // 6. RENDERIZADO Y CONSULTAS
 // ==========================================
-function mostrarEnPantalla(nombre, valores) {
-    const ids = { 'BD_Facturas': 'tabla-facturas','BD_Factura_Detalle': 'tabla-factura-detalle' };
-    const contenedor = document.getElementById(ids[nombre]);
-    if (!contenedor || !valores) return;
 
-    let html = `<h4>${nombre}</h4><div style="overflow-x:auto;"><table border="1" style="width:100%; border-collapse:collapse; background:white; font-size:12px;">`;
-    valores.forEach((fila, i) => {
-        const estilo = i === 0 ? "background:#8d6e63; color:white;" : "";
-        html += `<tr style="${estilo}">`;
-        fila.forEach(celda => html += `<td style="padding:8px; border:1px solid #ddd;">${celda ?? ''}</td>`);
-        if (nombre === 'BD_Facturas' && i > 0 && fila[0]) {
-            html += `<td><button onclick="reimprimirFacturaRelacional('${fila[0]}')">🖨️</button></td>`;
-        } else if (i === 0 && nombre === 'BD_Facturas') { html += `<td>Acción</td>`; }
-        html += '</tr>';
+function mostrarEnPantalla(nombre, valores) {
+  const ids = { 
+    'BD_Facturas': 'tabla-facturas',
+    'BD_Factura_Detalle': 'tabla-factura-detalle'
+  };
+
+  const contenedorId = ids[nombre];
+  console.log(`[mostrarEnPantalla] Renderizando tabla ${nombre} en contenedor ${contenedorId}`);
+
+  const contenedor = document.getElementById(contenedorId);
+
+  if (!contenedor) {
+    console.warn(`[mostrarEnPantalla] No se encontró contenedor con id="${contenedorId}" para la tabla ${nombre}.`);
+    return;
+  }
+
+  if (!valores || !valores.length) {
+    console.warn(`[mostrarEnPantalla] Tabla ${nombre} sin valores que mostrar.`);
+    contenedor.innerHTML = `<p>No hay datos para ${nombre}.</p>`;
+    return;
+  }
+
+  let html = `<h4>${nombre}</h4>
+              <div style="overflow-x:auto;">
+              <table border="1" style="width:100%; border-collapse:collapse; background:white; font-size:12px;">`;
+
+  valores.forEach((fila, i) => {
+    const estilo = i === 0 ? "background:#8d6e63; color:white;" : "";
+    html += `<tr style="${estilo}">`;
+    fila.forEach(celda => {
+      html += `<td style="padding:8px; border:1px solid #ddd;">${celda ?? ''}</td>`;
     });
-    contenedor.innerHTML = html + '</table></div>';
+
+    if (nombre === 'BD_Facturas') {
+      if (i === 0) {
+        html += `<td>Acción</td>`;
+      } else if (i > 0 && fila[0]) {
+        html += `<td><button onclick="reimprimirFacturaRelacional('${fila[0]}')">🖨️</button></td>`;
+      }
+    }
+
+    html += '</tr>';
+  });
+
+  html += '</table></div>';
+  contenedor.innerHTML = html;
+
+  console.log(`[mostrarEnPantalla] Tabla ${nombre} renderizada correctamente.`);
 }
+
 
 async function reimprimirFacturaRelacional(idFactura) {
     try {

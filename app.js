@@ -63,19 +63,16 @@ function agregarFilaProducto() {
     const contenedor = document.getElementById('contenedor-productos');
     const div = document.createElement('div');
     div.className = 'fila-producto';
-    div.style.position = 'relative';
-
-    // 1. Placeholder para Cantidad y Descuento añadidos.
-    // 2. Se ajustó el grid de 3 columnas a 4 para separar la "X" del precio.
+    
     div.innerHTML = `
-        <button type="button" onclick="this.parentElement.remove()" 
-            style="position:absolute; right:10px; top:15px; color:red; background:none; border:none; cursor:pointer; font-weight:bold; font-size:1.2em;">✕</button>
-        
-        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 40px; gap:8px; margin-bottom:10px; align-items: center;">
+        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 30px; gap:8px; align-items: center; margin-bottom:10px;">
             <input type="text" class="p_nombre" placeholder="Producto" required>
             <input type="number" class="p_cantidad" placeholder="Cantidad" min="1" required>
             <input type="number" class="p_precio" placeholder="Precio" required>
-            <div></div> </div>
+            
+            <button type="button" onclick="this.parentElement.parentElement.remove()" 
+                style="color:red; background:none; border:none; cursor:pointer; font-weight:bold; font-size:1.5em; padding:0;">✕</button>
+        </div>
 
         <div style="display:flex; gap:10px; align-items: center;">
             <input type="number" class="p_descuento" placeholder="Descuento en C$" style="flex:1;">

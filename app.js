@@ -86,51 +86,27 @@ async function leerExcel() {
     
     const tablas = ["TFacturas", "TDetalle"]; 
     const token = await getAuthToken();
-    const mensajeEl = document.getElementById('mensaje');
-
-    if (mensajeEl) mensajeEl.innerText = "Cargando datos desde Excel...";
+    const resultados = {}; // Aquí guardaremos los datos de ambas tablas
 
     for (const nombre of tablas) {
         try {
             const url = `${graphBaseUrl}/workbook/tables/${nombre}/range?t=${Date.now()}`;
-            console.log(`[leerExcel] Leyendo tabla: ${nombre}`);
-            console.log(`[leerExcel] URL:`, url)
-
             const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-            console.log(`[leerExcel] Respuesta tabla ${nombre} - status:`, resp.status);
-                      
-            if (!resp.ok) {
-                    let errorLog = null;
-                    try {
-                    errorLog = await resp.json();
-                    } catch (e) {
-                    errorLog = { error: "No se pudo parsear JSON de error" };
-                    }
-                    console.error(`[leerExcel] Error en tabla ${nombre}:`, errorLog);
 
-                    if (mensajeEl) {
-                    mensajeEl.innerText = `Error al leer la tabla ${nombre}. Revisa la consola para más detalles.`;
-                    }
-                    continue;
-                }
+            if (!resp.ok) {
+                console.error(`[leerExcel] Error en tabla ${nombre}`);
+                continue;
+            }
 
             const data = await resp.json();
-            console.log(`[leerExcel] Datos recibidos de ${nombre}:`, data);
-
-            if (data && data.values && data.values.length > 0) {
-            mostrarEnPantalla(nombre, data.values);
-            } else {
-            console.warn(`[leerExcel] La tabla ${nombre} no tiene valores (values vacío o undefined).`);
-            }
-
+            // Solo guardamos los valores, no dibujamos nada aquí
+            resultados[nombre] = data.values || [];
+            console.log(`[leerExcel] Datos de ${nombre} obtenidos con éxito.`);
         } catch (err) {
-            console.error(`[leerExcel] Error inesperado al leer ${nombre}:`, err);
-            if (mensajeEl) {
-                mensajeEl.innerText = `Error inesperado leyendo ${nombre}. Ver consola.`;
-            }
+            console.error(`[leerExcel] Fallo de conexión en ${nombre}:`, err);
         }
     }
-    if (mensajeEl) mensajeEl.innerText = "Datos cargados.";
+    return resultados; // Devolvemos el objeto con toda la información
 }
 
 
@@ -259,53 +235,42 @@ document.getElementById('formVentas').onsubmit = async (e) => {
 // ==========================================
 
 function mostrarEnPantalla(nombre, valores) {
-  const ids = { 
-    'tabla-facturas': 'TFacturas',
-    'tabla-detalle':'TDetalle'
-  };
+    const ids = { 'TFacturas': 'tabla-facturas', 'TDetalle': 'tabla-detalle' };
+    const contenedorId = ids[nombre];
+    const contenedor = document.getElementById(contenedorId);
 
-  const contenedorId = ids[nombre];
-  console.log(`[mostrarEnPantalla] Renderizando tabla ${nombre} en contenedor ${contenedorId}`);
-
-  const contenedor = document.getElementById(contenedorId);
-
-  if (!contenedor) {
-    console.warn(`[mostrarEnPantalla] No se encontró contenedor con id="${contenedorId}" para la tabla ${nombre}.`);
-    return;
-  }
-
-  if (!valores || !valores.length) {
-    console.warn(`[mostrarEnPantalla] Tabla ${nombre} sin valores que mostrar.`);
-    contenedor.innerHTML = `<p>No hay datos para ${nombre}.</p>`;
-    return;
-  }
-
-  let html = `<h4>${nombre}</h4>
-              <div style="overflow-x:auto;">
-              <table border="1" style="width:100%; border-collapse:collapse; background:white; font-size:12px;">`;
-
-  valores.forEach((fila, i) => {
-    const estilo = i === 0 ? "background:#8d6e63; color:white;" : "";
-    html += `<tr style="${estilo}">`;
-    fila.forEach(celda => {
-      html += `<td style="padding:8px; border:1px solid #ddd;">${celda ?? ''}</td>`;
-    });
-
-    if (nombre === 'TFacturas') {
-      if (i === 0) {
-        html += `<td>Acción</td>`;
-      } else if (i > 0 && fila[0]) {
-        html += `<td><button onclick="reimprimirFacturaRelacional('${fila[0]}')">🖨️</button></td>`;
-      }
+    if (!contenedor) {
+        console.warn(`[mostrarEnPantalla] No existe el contenedor: ${contenedorId}`);
+        return;
     }
 
-    html += '</tr>';
-  });
+    if (!valores || valores.length === 0) {
+        contenedor.innerHTML = `<p>No hay datos en ${nombre}</p>`;
+        return;
+    }
 
-  html += '</table></div>';
-  contenedor.innerHTML = html;
+    // Generación del HTML (Tu lógica actual que está muy bien)
+    let html = `<h4>${nombre}</h4>
+                <div style="overflow-x:auto;">
+                <table border="1" style="width:100%; border-collapse:collapse; background:white; font-size:12px;">`;
 
-  console.log(`[mostrarEnPantalla] Tabla ${nombre} renderizada correctamente.`);
+    valores.forEach((fila, i) => {
+        const estilo = i === 0 ? "background:#8d6e63; color:white;" : "";
+        html += `<tr style="${estilo}">`;
+        fila.forEach(celda => {
+            html += `<td style="padding:8px; border:1px solid #ddd;">${celda ?? ''}</td>`;
+        });
+        
+        // Lógica de botón de impresión para facturas
+        if (nombre === 'TFacturas') {
+            if (i === 0) html += `<td>Acción</td>`;
+            else if (fila[0]) html += `<td><button onclick="reimprimirFacturaRelacional('${fila[0]}')">🖨️</button></td>`;
+        }
+        html += '</tr>';
+    });
+
+    html += '</table></div>';
+    contenedor.innerHTML = html;
 }
 
 async function reimprimirFacturaRelacional(idFactura) {
@@ -439,9 +404,19 @@ function generarFactura(d) {
 }
 
 async function refrescarTablasManual() {
-    document.getElementById('mensaje').innerText = "Actualizando...";
-    await leerExcel();
-    alert("Datos actualizados.");
+    navegar('consulta-tablas'); // 1. Preparamos el escenario (mostramos los DIVs)
+    
+    const datosRecienLlegados = await leerExcel(); // 2. Traemos los datos (Conexión)
+    
+    // 3. Mandamos a dibujar cada tabla por separado
+    if (datosRecienLlegados.TFacturas) {
+        mostrarEnPantalla('TFacturas', datosRecienLlegados.TFacturas);
+    }
+    if (datosRecienLlegados.TDetalle) {
+        mostrarEnPantalla('TDetalle', datosRecienLlegados.TDetalle);
+    }
+    
+    document.getElementById('mensaje').innerText = "Tablas actualizadas.";
 }
 
 function excelSerialToDate(serial) {

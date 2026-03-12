@@ -405,7 +405,7 @@ function generarFactura(d) {
                 <strong>Factura N°:</strong> ${d.Factura_ID}
             </div>
             <div>
-                <strong>Fecha:</strong> ${excelSerialToDate(d.Fecha).toLocaleDateString("es-ES")}
+                <strong>Fecha:</strong> ${formatFechaDDMMYYYY(excelSerialToDate(d.Fecha))}
             </div>
         </div>
 
@@ -447,5 +447,12 @@ async function refrescarTablasManual() {
 function excelSerialToDate(serial) {
     const excelEpoch = new Date(1899, 11, 30); // Excel base date
     return new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
+}
+
+function formatFechaDDMMYYYY(date) {
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const yyyy = date.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
 }
 

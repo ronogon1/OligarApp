@@ -266,11 +266,11 @@ function mostrarEnPantalla(nombre, valores) {
 async function reimprimirFacturaRelacional(idFactura) {
     try {
         const token = await getAuthToken();
-        const resC = await fetch(`${graphBaseUrl}/tables/TFacturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
         const dC = await resC.json();
         const fC = dC.values.find(f => f[0] && f[0].toString() === idFactura.toString());
 
-        const resD = await fetch(`${graphBaseUrl}/tables/TDetalle/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const resD = await fetch(`${graphBaseUrl}/workbook/tables/TDetalle/range`, { headers: { 'Authorization': `Bearer ${token}` } });
         const dD = await resD.json();
         const fD = dD.values.filter(f => f[0] && f[0].toString() === idFactura.toString());
 

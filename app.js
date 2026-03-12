@@ -147,7 +147,7 @@ async function escribirFilas(nombreTabla, filas) {
 
 
 // ==========================================
-// 5. PROCESO DE VENTA (CON IMÁGENES RESTAURADAS)
+// 5. PROCESO DE VENTA (CON FILEID DE IMAGEN)
 // ==========================================
 document.getElementById('formVentas').onsubmit = async (e) => {
     e.preventDefault();
@@ -185,25 +185,29 @@ document.getElementById('formVentas').onsubmit = async (e) => {
             const subtotal = (cant * precio) - desc;
 
             const archivo = fila.querySelector('.p_imagen')?.files[0];
-            let nombreImg = "sin_foto.png";
+            let fileIdImg = "sin_foto";
             let urlLocal = "";
 
-            // --- SUBIR IMAGEN A ONEDRIVE (CARPETA DEL TERCERO) ---
+            // --- SUBIR IMAGEN A ONEDRIVE Y OBTENER FILEID ---
             if (archivo) {
-                nombreImg = `${facturaID}_${nombre.replace(/\s+/g, '_')}.jpg`;
-                urlLocal = URL.createObjectURL(archivo);
+                const nombreImg = `${facturaID}_${nombre.replace(/\s+/g, '_')}.jpg`;
 
                 const uploadUrl = 
                     `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${productosFolderId}:/${nombreImg}:/content`;
 
-                await fetch(uploadUrl, {
+                const respUpload = await fetch(uploadUrl, {
                     method: 'PUT',
                     headers: { 'Authorization': `Bearer ${token}` },
                     body: archivo
                 });
+
+                const dataUpload = await respUpload.json();
+                fileIdImg = dataUpload.id; // ← EL FILEID REAL
+
+                urlLocal = URL.createObjectURL(archivo);
             }
 
-            filasDetalle.push([facturaID, nombre, cant, precio, desc, subtotal, nombreImg]);
+            filasDetalle.push([facturaID, nombre, cant, precio, desc, subtotal, fileIdImg]);
 
             datosVisual.push({
                 Producto: nombre,
@@ -326,12 +330,12 @@ async function reimprimirFacturaRelacional(idFactura) {
         for (let f of dD.values) {
             if (f[0] && f[0].toString() === idFactura.toString()) {
 
-                const nombreImg = f[6];
+                const fileIdImg = f[6];
                 let urlImagen = "";
 
-                if (nombreImg && nombreImg !== "sin_foto.png") {
+                if (fileIdImg && fileIdImg !== "sin_foto") {
                     urlImagen =
-                        `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${productosFolderId}:/${nombreImg}:/content`;
+                        `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileIdImg}/content`;
                 }
 
                 detalles.push({

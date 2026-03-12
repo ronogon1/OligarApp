@@ -260,8 +260,8 @@ document.getElementById('formVentas').onsubmit = async (e) => {
 
 function mostrarEnPantalla(nombre, valores) {
   const ids = { 
-    'TFacturas': 'tabla-facturas',
-    'TDetalle': 'tabla-detalle'
+    'tabla-facturas': 'TFacturas',
+    'tabla-detalle':'TDetalle'
   };
 
   const contenedorId = ids[nombre];

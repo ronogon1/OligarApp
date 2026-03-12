@@ -91,7 +91,7 @@ async function leerExcel() {
 
     for (const nombre of tablas) {
         try {
-            const url = `${graphBaseUrl}/tables/${nombre}/range?t=${Date.now()}`;
+            const url = `${graphBaseUrl}/workbook/tables/${nombre}/range?t=${Date.now()}`;
             console.log(`[leerExcel] Leyendo tabla: ${nombre}`);
             console.log(`[leerExcel] URL:`, url)
 
@@ -139,7 +139,7 @@ async function leerExcel() {
 
 async function escribirFilas(nombreTabla, filas) {
     const token = await getAuthToken();
-    const url = `${graphBaseUrl}/tables/${nombreTabla}/rows`;
+    const url = `${graphBaseUrl}/workbook/tables/${nombreTabla}/rows`;
     const resp = await fetch(url, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },

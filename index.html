@@ -2,19 +2,18 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OligarApp - Control de Ventas</title>
     <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; padding: 20px; background-color: #f4f7f6; color: #333; margin: 0; }
-        button { padding: 10px 20px; cursor: pointer; background-color: #8d6e63; color: white; border: none; border-radius: 4px; font-weight: bold; transition: 0.3s; margin: 5px 0; }
+        button { padding: 10px 20px; cursor: pointer; background-color: #8d6e63; color: white; border: none; border-radius: 4px; font-weight: bold; transition: 0.3s; }
         button:hover { background-color: #5d4037; }
-        button:disabled { background-color: #ccc; cursor: not-allowed; }
-        input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; width: 100%; }
-        #mensaje { margin: 20px 0; color: #666; font-style: italic; text-align: center; font-size: 0.9em; }
+        #mensaje { margin: 20px 0; color: #666; font-style: italic; text-align: center; }
         .tabla-contenedor { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; overflow-x: auto; }
+        input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .fila-producto { border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 15px; background: white; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        @media print { .ocultar-impresion, button, #mensaje { display: none !important; } body { background: white; padding: 0; } }
+        @media print { .ocultar-impresion { display: none !important; } body { background: white; padding: 0; } }
     </style>
 </head>
 <body>
@@ -31,17 +30,18 @@
             <button onclick="navegar('registro-ventas')">🛍️ Registrar Venta</button>
             <button onclick="navegar('consulta-tablas')">📊 Consulta de Tablas</button>
             <button onclick="navegar('gestion-facturas')">⚙️ Gestión de Facturas</button>
-            <button onclick="location.reload()" style="background-color: #d32f2f;">🔄 Cerrar Sesión</button>
+            <button onclick="location.reload()">🔄 Cerrar Sesión</button>
         </div>
     </div>
 
     <div id="seccion-consulta-tablas" style="display:none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <button onclick="navegar('menu')">← Volver</button>
-            <button onclick="refrescarTablasManual()" style="background:#2e7d32; color:white;">🔄 Actualizar Datos</button>
-        </div>
-        <div id="tabla-facturas" style="margin-bottom:20px;"></div>
-        <div id="tabla-detalle"></div>
+        <button onclick="navegar('menu')" style="background:#8d6e63; margin-bottom: 20px;">← Volver al Menú</button>
+        <button onclick="refrescarTablasManual()" style="background:#2e7d32; color:white; margin-bottom: 20px; float: right;">
+            🔄 Actualizar Datos
+        </button>
+        <div id="tabla-ventas" class="tarjeta"></div>
+        <div id="tabla-ganancia" class="tarjeta"></div>
+        <div id="tabla-mo" class="tarjeta"></div>
     </div>
 
     <div id="seccion-registro-ventas" style="display:none; max-width: 600px; margin: auto;">
@@ -56,44 +56,56 @@
 
             <div id="contenedor-productos"></div>
 
-            <button type="button" onclick="agregarFilaProducto()" style="background:#8d6e63; width: 100%;">+ Añadir Producto</button>
+            <button type="button" onclick="agregarFilaProducto()" style="background:#8d6e63; margin-bottom: 20px; width: 100%;">
+                + Añadir Producto a la Lista
+            </button>
 
-            <div style="background:#eee; padding: 15px; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-                <label>Envío (C$): <input type="number" id="v_envio" value="0"></label>
-                <label>Desc. Global (C$): <input type="number" id="v_desc_global" value="0"></label>
+            <div style="background:#eee; padding: 15px; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <label>Envío (C$): <input type="number" id="v_envio" value="0" style="width: 100%;"></label>
+                <label>Desc. Global (C$): <input type="number" id="v_desc_global" value="0" style="width: 100%;"></label>
             </div>
 
-            <button type="submit" style="width:100%; background-color: #28a745; margin-top: 20px; padding: 15px; font-size: 1.1em;">Finalizar y Guardar</button>
+            <button type="submit" style="width:100%; background-color: #28a745; margin-top: 20px; padding: 15px; font-size: 1.2em;">
+                Finalizar Venta y Guardar
+            </button>
         </form>
     </div>
 
     <div id="seccion-gestion-facturas" style="display:none; max-width: 600px; margin: auto;">
         <button onclick="navegar('menu')">← Volver</button>
         <h3>Buscador de Facturas</h3>
-        <div style="display:flex; gap:10px;">
-            <input type="text" id="busqueda_factura" placeholder="ID de Factura (Ej: 20260001)">
+        <div style="display:flex; gap:10px; margin-bottom:20px;">
+            <input type="text" id="busqueda_factura" placeholder="ID de Factura" style="flex:1;">
             <button onclick="reimprimirFacturaRelacional(document.getElementById('busqueda_factura').value)">Buscar</button>
         </div>
     </div>
 
     <div id="modal-factura" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; overflow-y:auto;">
-        <div id="area-impresion" style="background:white; width:95%; max-width:600px; margin:20px auto; padding:30px; border-radius:10px;">
-            <div style="text-align: center; border-bottom: 2px solid #8d6e63; padding-bottom: 15px; margin-bottom: 20px;">
-                <h1 style="margin:0; color:#5d4037;">OLIGAR CROCHET</h1>
-                <p style="margin:0; font-size:0.8em; color:#666;">Managua, Nicaragua | Cel: 7841 1119</p>
+        <div id="area-impresion" style="background:white; width:95%; max-width:600px; margin:20px auto; padding:30px; border-radius:10px; box-sizing: border-box;">
+            
+            <div style="display: grid; grid-template-columns: 120px 1fr 120px; align-items: center; border-bottom: 2px solid #8d6e63; padding-bottom: 15px; margin-bottom: 20px;">
+                <img src="logo_oligar.png" style="width:100px; height:100px; border-radius:8px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/90?text=LOGO'">
+                
+                <div style="text-align: center;">
+                    <h1 style="margin:0; color:#5d4037; font-size:1.6em; letter-spacing: 1px;">OLIGAR CROCHET</h1>
+                    <p style="margin:2px 0; color:#8d6e63; font-style:italic; font-size:1em;">"Creando con amor"</p>
+                    <p style="margin:0; font-size:0.8em; color:#666;">Managua, Nicaragua | Celular: 7841 1119</p>
+                    <p style="margin:0; font-size:0.8em; color:#666;">oligar.crochet@gmail.com</p>
+                </div>
+                <div></div>
             </div>
+
             <div id="detalle-factura"></div>
-            <div class="ocultar-impresion" style="margin-top:30px; text-align:center;">
-                <button onclick="window.print()" style="background:#16b990;">🖨️ Imprimir</button>
+
+            <div class="ocultar-impresion" style="margin-top:30px; text-align:center; display:flex; justify-content:center; gap:10px;">
+                <button onclick="window.print()" style="background:#5d4037;">🖨️ Imprimir</button>
                 <button onclick="document.getElementById('modal-factura').style.display='none'" style="background:#ccc; color: black;">Cerrar</button>
             </div>
         </div>
     </div>
-    //cambio de color como prueba, luego debe regesar a la versión anterior
 
     <p id="mensaje">Estado: Desconectado</p>
     
     <script src="app.js"></script>
 </body>
 </html>
-

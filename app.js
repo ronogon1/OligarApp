@@ -64,16 +64,22 @@ function agregarFilaProducto() {
     const div = document.createElement('div');
     div.className = 'fila-producto';
     div.style.position = 'relative';
+
+    // 1. Placeholder para Cantidad y Descuento añadidos.
+    // 2. Se ajustó el grid de 3 columnas a 4 para separar la "X" del precio.
     div.innerHTML = `
-        <button type="button" onclick="this.parentElement.remove()" style="position:absolute; right:5px; top:5px; color:red; background:none; border:none; cursor:pointer;">✕</button>
-        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:8px; margin-bottom:10px;">
+        <button type="button" onclick="this.parentElement.remove()" 
+            style="position:absolute; right:10px; top:15px; color:red; background:none; border:none; cursor:pointer; font-weight:bold; font-size:1.2em;">✕</button>
+        
+        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 40px; gap:8px; margin-bottom:10px; align-items: center;">
             <input type="text" class="p_nombre" placeholder="Producto" required>
-            <input type="number" class="p_cantidad" value="1" min="1" required>
+            <input type="number" class="p_cantidad" placeholder="Cantidad" min="1" required>
             <input type="number" class="p_precio" placeholder="Precio" required>
-        </div>
-        <div style="display:flex; gap:10px;">
-            <input type="number" class="p_descuento" placeholder="Desc. Unidad" value="0" style="flex:1;">
-            <span style="flex:1.5; font-size:0.8em; color:#666;">(Imagen por defecto: sin_foto.png)</span>
+            <div></div> </div>
+
+        <div style="display:flex; gap:10px; align-items: center;">
+            <input type="number" class="p_descuento" placeholder="Descuento en C$" style="flex:1;">
+            <input type="file" class="p_imagen" accept="image/*" style="flex:1.5; font-size: 0.8em;">
         </div>
     `;
     contenedor.appendChild(div);

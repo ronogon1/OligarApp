@@ -400,10 +400,15 @@ function generarFactura(d) {
         `).join('');
 
     document.getElementById('detalle-factura').innerHTML = `
-        <div style="margin-bottom:15px;">
-            <strong>N°:</strong> ${d.Factura_ID} |
-            <strong>Fecha:</strong> ${d.Fecha}
+        <div style="margin-bottom:15px; display:flex; justify-content:space-between;">
+            <div>
+                <strong>Factura N°:</strong> ${d.Factura_ID}
+            </div>
+            <div>
+                <strong>Fecha:</strong> ${new Date(d.Fecha).toLocaleDateString("es-ES")}
+            </div>
         </div>
+
 
         <div style="margin-bottom:15px; border-left:3px solid #8d6e63; padding-left:10px;">
             <strong>Cliente:</strong> ${d.Cliente}

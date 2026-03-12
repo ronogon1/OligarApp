@@ -299,8 +299,18 @@ async function reimprimirFacturaRelacional(idFactura) {
                 let urlImagen = "";
 
                 if (fileIdImg && fileIdImg !== "sin_foto") {
-                    urlImagen =
-                        `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileIdImg}/content`;
+                    try {
+                        // Pedimos a la API los detalles del archivo, que incluyen el link de descarga directa
+                        const resImg = await fetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileIdImg}`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        const dataImg = await resImg.json();
+                        // Este campo contiene una URL temporal que el navegador SÍ puede renderizar
+                        urlImagen = dataImg["@microsoft.graph.downloadUrl"]; 
+                    } catch (err) {
+                        console.error("Error obteniendo URL de imagen:", err);
+                        urlImagen = "sin_foto.png"; // Imagen por defecto si falla
+                    }
                 }
 
                 detalles.push({

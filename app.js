@@ -280,12 +280,31 @@ async function reimprimirFacturaRelacional(idFactura) {
 
 function generarFactura(d) {
     const n = v => parseFloat(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
-    const filas = d.detalles.map(it => `
-        <tr>
-            <td style="padding:8px; border-bottom:1px solid #eee;">${it.Cantidad}x ${it.Producto}</td>
-            <td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">${n(it.Subtotal)}</td>
-        </tr>
-    `).join('');
+    const filas = d.detalles.map(it => {
+        const precioOriginal = (parseFloat(it.Subtotal) + parseFloat(it.Desc_Prod)) / it.Cantidad;
+
+        return `
+            <tr>
+                <td style="padding:10px; border-bottom:1px solid #eee;">
+                    ${it.Cantidad}x ${it.Producto}
+
+                    ${it.Desc_Prod > 0 ? `
+                        <br>
+                        <small style="color:#333;">
+                            Precio: ${n(precioOriginal)}
+                        </small>
+                        <small style="color:red; margin-left: 8px;">
+                            Desc: -${n(it.Desc_Prod)}
+                        </small>
+                    ` : ''}
+                </td>
+
+                <td style="padding:10px; text-align:right; border-bottom:1px solid #eee;">
+                    ${n(it.Subtotal)}
+                </td>
+            </tr>
+        `;
+    }).join('');
 
     document.getElementById('detalle-factura').innerHTML = `
         <div style="margin-bottom:15px;"><strong>N°:</strong> ${d.Factura_ID} | <strong>Fecha:</strong> ${d.Fecha}</div>

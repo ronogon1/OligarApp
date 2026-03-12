@@ -113,18 +113,15 @@ async function leerExcel() {
                     continue;
                 }
 
-            
             const data = await resp.json();
             console.log(`[leerExcel] Datos recibidos de ${nombre}:`, data);
 
-            
             if (data && data.values && data.values.length > 0) {
             mostrarEnPantalla(nombre, data.values);
             } else {
             console.warn(`[leerExcel] La tabla ${nombre} no tiene valores (values vacío o undefined).`);
             }
 
-        
         } catch (err) {
             console.error(`[leerExcel] Error inesperado al leer ${nombre}:`, err);
             if (mensajeEl) {
@@ -132,7 +129,6 @@ async function leerExcel() {
             }
         }
     }
-
     if (mensajeEl) mensajeEl.innerText = "Datos cargados.";
 }
 
@@ -148,6 +144,7 @@ async function escribirFilas(nombreTabla, filas) {
     return resp.ok;
 }
 
+
 // ==========================================
 // 5. PROCESO DE VENTA
 // ==========================================
@@ -161,7 +158,7 @@ document.getElementById('formVentas').onsubmit = async (e) => {
         const token = await getAuthToken();
         
         // 1. Obtener correlativo
-        const resC = await fetch(`${graphBaseUrl}/tables/TFacturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
         const dataC = await resC.json();
         let proxId = 1;
         if (dataC.values && dataC.values.length > 1) {

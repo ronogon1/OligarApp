@@ -12,6 +12,7 @@ const msalConfig = {
 const driveId = "56163DD91D08F884"
 const fileId = "56163DD91D08F884!s67e52d563b4b4c59911dbd743552ac7d";
 const graphBaseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
+const productosFolderId = "56163DD91D08F884!saaf6f36dee0d406092c3d80f859b3981";
 const msalInstance = new msal.PublicClientApplication(msalConfig);
 
 // ==========================================
@@ -146,7 +147,7 @@ async function escribirFilas(nombreTabla, filas) {
 
 
 // ==========================================
-// 5. PROCESO DE VENTA
+// 5. PROCESO DE VENTA (CON IMÁGENES RESTAURADAS)
 // ==========================================
 document.getElementById('formVentas').onsubmit = async (e) => {
     e.preventDefault();
@@ -156,33 +157,64 @@ document.getElementById('formVentas').onsubmit = async (e) => {
 
     try {
         const token = await getAuthToken();
-        
+
         // 1. Obtener correlativo
-        const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+        });
         const dataC = await resC.json();
+
         let proxId = 1;
         if (dataC.values && dataC.values.length > 1) {
             const ids = dataC.values.slice(1).map(f => parseInt(f[0].toString().substring(4)) || 0);
             proxId = Math.max(...ids) + 1;
         }
+
         const facturaID = `${new Date().getFullYear()}${proxId.toString().padStart(4, '0')}`;
 
-        // 2. Procesar productos del formulario
+        // 2. Procesar productos
         const filasDetalle = [];
         const datosVisual = [];
         let sumaSubtotales = 0;
 
-        document.querySelectorAll('.fila-producto').forEach(fila => {
+        for (let fila of document.querySelectorAll('.fila-producto')) {
             const nombre = fila.querySelector('.p_nombre').value;
             const cant = parseInt(fila.querySelector('.p_cantidad').value);
             const precio = parseFloat(fila.querySelector('.p_precio').value);
             const desc = parseFloat(fila.querySelector('.p_descuento').value) || 0;
             const subtotal = (cant * precio) - desc;
 
-            filasDetalle.push([facturaID, nombre, cant, precio, desc, subtotal, "sin_foto.png"]);
-            datosVisual.push({ Producto: nombre, Cantidad: cant, Desc_Prod: desc, Subtotal: subtotal });
+            const archivo = fila.querySelector('.p_imagen')?.files[0];
+            let nombreImg = "sin_foto.png";
+            let urlLocal = "";
+
+            // --- SUBIR IMAGEN A ONEDRIVE (CARPETA DEL TERCERO) ---
+            if (archivo) {
+                nombreImg = `${facturaID}_${nombre.replace(/\s+/g, '_')}.jpg`;
+                urlLocal = URL.createObjectURL(archivo);
+
+                const uploadUrl = 
+                    `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${productosFolderId}:/${nombreImg}:/content`;
+
+                await fetch(uploadUrl, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: archivo
+                });
+            }
+
+            filasDetalle.push([facturaID, nombre, cant, precio, desc, subtotal, nombreImg]);
+
+            datosVisual.push({
+                Producto: nombre,
+                Cantidad: cant,
+                Desc_Prod: desc,
+                Subtotal: subtotal,
+                Imagen_Producto: urlLocal
+            });
+
             sumaSubtotales += subtotal;
-        });
+        }
 
         const envio = parseFloat(document.getElementById('v_envio').value) || 0;
         const descG = parseFloat(document.getElementById('v_desc_global').value) || 0;
@@ -190,17 +222,30 @@ document.getElementById('formVentas').onsubmit = async (e) => {
 
         // 3. Guardar en Excel
         await escribirFilas("TDetalle", filasDetalle);
-        await escribirFilas("TFacturas", [[facturaID, document.getElementById('v_fecha').value, document.getElementById('v_cliente').value, envio, descG, totalF, "Activo"]]);
+        await escribirFilas("TFacturas", [
+            [facturaID, document.getElementById('v_fecha').value, document.getElementById('v_cliente').value, envio, descG, totalF, "Activo"]
+        ]);
 
-        // 4. Mostrar Factura
-        generarFactura({ Factura_ID: facturaID, Cliente: document.getElementById('v_cliente').value, Envio: envio, Desc_Global: descG, Total_Factura: totalF, detalles: datosVisual, Fecha: document.getElementById('v_fecha').value });
-        
+        // 4. Mostrar Factura con imágenes
+        generarFactura({
+            Factura_ID: facturaID,
+            Cliente: document.getElementById('v_cliente').value,
+            Envio: envio,
+            Desc_Global: descG,
+            Total_Factura: totalF,
+            detalles: datosVisual,
+            Fecha: document.getElementById('v_fecha').value
+        });
+
         alert("Venta guardada exitosamente.");
         e.target.reset();
         await leerExcel();
         navegar('menu');
-    } catch (err) { alert("Error al guardar: " + err.message); }
-    
+
+    } catch (err) {
+        alert("Error al guardar: " + err.message);
+    }
+
     btn.disabled = false;
     document.getElementById('mensaje').innerText = "Listo.";
 };
@@ -259,27 +304,64 @@ function mostrarEnPantalla(nombre, valores) {
   console.log(`[mostrarEnPantalla] Tabla ${nombre} renderizada correctamente.`);
 }
 
-
 async function reimprimirFacturaRelacional(idFactura) {
     try {
         const token = await getAuthToken();
-        const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+
+        // --- 1. Leer cabecera ---
+        const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+        });
         const dC = await resC.json();
         const fC = dC.values.find(f => f[0] && f[0].toString() === idFactura.toString());
 
-        const resD = await fetch(`${graphBaseUrl}/workbook/tables/TDetalle/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        // --- 2. Leer detalle ---
+        const resD = await fetch(`${graphBaseUrl}/workbook/tables/TDetalle/range`, { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+        });
         const dD = await resD.json();
-        const fD = dD.values.filter(f => f[0] && f[0].toString() === idFactura.toString());
+
+        const detalles = [];
+
+        for (let f of dD.values) {
+            if (f[0] && f[0].toString() === idFactura.toString()) {
+
+                const nombreImg = f[6];
+                let urlImagen = "";
+
+                if (nombreImg && nombreImg !== "sin_foto.png") {
+                    urlImagen =
+                        `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${productosFolderId}:/${nombreImg}:/content`;
+                }
+
+                detalles.push({
+                    Producto: f[1],
+                    Cantidad: f[2],
+                    Desc_Prod: f[4],
+                    Subtotal: f[5],
+                    Imagen_Producto: urlImagen
+                });
+            }
+        }
 
         generarFactura({
-            Factura_ID: fC[0], Fecha: fC[1], Cliente: fC[2], Envio: fC[3], Desc_Global: fC[4], Total_Factura: fC[5],
-            detalles: fD.map(f => ({ Producto: f[1], Cantidad: f[2], Desc_Prod: f[4], Subtotal: f[5] }))
+            Factura_ID: fC[0],
+            Fecha: fC[1],
+            Cliente: fC[2],
+            Envio: fC[3],
+            Desc_Global: fC[4],
+            Total_Factura: fC[5],
+            detalles
         });
-    } catch (e) { alert("Error al buscar factura."); }
+
+    } catch (e) {
+        alert("Error al buscar factura.");
+    }
 }
 
 function generarFactura(d) {
     const n = v => parseFloat(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
+
     const filas = d.detalles.map(it => {
         const precioOriginal = (parseFloat(it.Subtotal) + parseFloat(it.Desc_Prod)) / it.Cantidad;
 
@@ -290,12 +372,8 @@ function generarFactura(d) {
 
                     ${it.Desc_Prod > 0 ? `
                         <br>
-                        <small style="color:#333;">
-                            Precio: ${n(precioOriginal)}
-                        </small>
-                        <small style="color:red; margin-left: 8px;">
-                            Desc: -${n(it.Desc_Prod)}
-                        </small>
+                        <small style="color:#333;">Precio: ${n(precioOriginal)}</small>
+                        <small style="color:red; margin-left: 8px;">Desc: -${n(it.Desc_Prod)}</small>
                     ` : ''}
                 </td>
 
@@ -306,19 +384,48 @@ function generarFactura(d) {
         `;
     }).join('');
 
+    // --- Bloque de imágenes ---
+    const imagenesHTML = d.detalles
+        .filter(it => it.Imagen_Producto)
+        .map(it => `
+            <div style="text-align:center;">
+                <img src="${it.Imagen_Producto}" 
+                     style="width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:5px;">
+                <p style="font-size:0.6em; color:#777;">${it.Producto}</p>
+            </div>
+        `).join('');
+
     document.getElementById('detalle-factura').innerHTML = `
-        <div style="margin-bottom:15px;"><strong>N°:</strong> ${d.Factura_ID} | <strong>Fecha:</strong> ${d.Fecha}</div>
-        <div style="margin-bottom:15px; border-left:3px solid #8d6e63; padding-left:10px;"><strong>Cliente:</strong> ${d.Cliente}</div>
+        <div style="margin-bottom:15px;">
+            <strong>N°:</strong> ${d.Factura_ID} |
+            <strong>Fecha:</strong> ${d.Fecha}
+        </div>
+
+        <div style="margin-bottom:15px; border-left:3px solid #8d6e63; padding-left:10px;">
+            <strong>Cliente:</strong> ${d.Cliente}
+        </div>
+
         <table style="width:100%; border-collapse:collapse;">
-            <thead><tr style="background:#f4f4f4;"><th style="text-align:left; padding:8px;">Producto</th><th style="text-align:right; padding:8px;">Subtotal</th></tr></thead>
+            <thead>
+                <tr style="background:#f4f4f4;">
+                    <th style="text-align:left; padding:8px;">Producto</th>
+                    <th style="text-align:right; padding:8px;">Subtotal</th>
+                </tr>
+            </thead>
             <tbody>${filas}</tbody>
         </table>
+
         <div style="text-align:right; margin-top:15px; border-top:2px solid #8d6e63; padding-top:10px;">
             <p style="margin:2px;">Envío: C$ ${n(d.Envio)}</p>
-            <p style="margin:2px;">Desc. Global: -C$ ${n(d.Desc_Global)}</p>
+            ${d.Desc_Global > 0 ? `<p style="margin:2px; color:red;">Desc. Global: -C$ ${n(d.Desc_Global)}</p>` : ""}
             <h3 style="margin:5px 0; color:#5d4037;">TOTAL: C$ ${n(d.Total_Factura)}</h3>
         </div>
+
+        <div style="margin-top:20px; display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
+            ${imagenesHTML}
+        </div>
     `;
+
     document.getElementById('modal-factura').style.display = 'block';
 }
 

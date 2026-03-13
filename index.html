@@ -80,10 +80,19 @@
 
     <div id="seccion-gestion-facturas" style="display:none; max-width: 600px; margin: auto;">
         <button onclick="navegar('menu')">← Volver</button>
-        <h3>Buscador de Facturas</h3>
+        
+        <h3>Gestión de Facturas</h3>
+        
         <div style="display:flex; gap:10px; margin-bottom:20px;">
             <input type="text" id="busqueda_factura" placeholder="ID de Factura" style="flex:1;">
-            <button onclick="ImprimirFactura(document.getElementById('busqueda_factura').value)">Buscar</button>
+            
+            <button onclick="cargarFacturaParaEditar(document.getElementById('busqueda_factura').value)" 
+                    style="background:#5d4037; color: white;">✏️ Editar</button>
+            
+            <button onclick="ImprimirFactura(document.getElementById('busqueda_factura').value)">🖨️ Reimprimir</button>
+            
+            <button onclick="AnularFactura(document.getElementById('busqueda_factura').value)"
+                    style="background:#c62828; color: white;">🚫 Anular</button>
         </div>
     </div>
 
@@ -96,8 +105,8 @@
                 <div style="text-align: center;">
                     <h1 style="margin:0; color:#5d4037; font-size:1.6em; letter-spacing: 1px;">OLIGAR CROCHET</h1>
                     <p style="margin:2px 0; color:#8d6e63; font-style:italic; font-size:1em;">"Creando con amor"</p>
-                    <p style="margin:0; font-size:0.8em; color:#666;">Managua, Nicaragua | Celular: 7841 1119</p>
-                    <p style="margin:0; font-size:0.8em; color:#666;">oligar.crochet@gmail.com</p>
+                    <p style="margin:0; font-size:0.8em; color:#444;">Managua, Nicaragua | Celular: 7841 1119</p>
+                    <p style="margin:0; font-size:0.8em; color:#444;">oligar.crochet@gmail.com</p>
                 </div>
                 <div></div>
             </div>

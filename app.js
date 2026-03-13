@@ -560,6 +560,55 @@ async function cargarFacturaParaEditar(idFactura) {
 }
 
 
+async function AnularFactura(idFactura) {
+    if (!idFactura) return alert("Ingresa un ID");
+    
+    const confirmar = confirm(`¿Estás seguro de que deseas ANULAR la factura ${idFactura}? Esto no se puede deshacer.`);
+    if (!confirmar) return;
+
+    document.getElementById('mensaje').innerText = "Anulando factura...";
+
+    try {
+        const token = await getAuthToken();
+        
+        // 1. Buscamos la fila en Excel para saber su índice
+        const res = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+        });
+        const data = await res.json();
+        
+        // Buscamos el índice de la fila (restando 1 por el encabezado)
+        const filaIndex = data.values.findIndex(f => f[0] && f[0].toString() === idFactura.toString()) - 1;
+
+        if (filaIndex < 0) return alert("Factura no encontrada.");
+
+        // 2. Actualizamos SOLO la columna de estado (Columna G = índice 6)
+        // Usamos PATCH para actualizar una celda específica
+        const urlUpdate = `${graphBaseUrl}/workbook/tables/TFacturas/rows/itemAt(index=${filaIndex})`;
+        
+        // Obtenemos la fila actual para no perder los otros datos, solo cambiamos el índice 6
+        const filaActual = data.values[filaIndex + 1];
+        filaActual[6] = "Anulado"; 
+
+        await fetch(urlUpdate, {
+            method: 'PATCH',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ values: [filaActual] })
+        });
+
+        alert(`Factura ${idFactura} anulada con éxito.`);
+        await leerExcel(); // Refrescamos las tablas
+        document.getElementById('mensaje').innerText = "Factura anulada.";
+
+    } catch (err) {
+        alert("Error al anular: " + err.message);
+    }
+}
+
+
 function cerrarFacturaYSalir() {
     document.getElementById('modal-factura').style.display = 'none'; // Acción 1: Esconder
     navegar('menu');                                                 // Acción 2: Navegar

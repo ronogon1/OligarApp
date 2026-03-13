@@ -387,7 +387,7 @@ function generarFactura(d) {
     // 4. Composición final del HTML
     const contenido = `
         <div style="color:#444; font-size: 14px;">
-            <p><strong>Factura N°:</strong> ${d.Factura_ID} <span style="float:right;"><strong>Fecha:</strong> ${d.Fecha}</span></p>
+            <p><strong>Factura N°:</strong> ${d.Factura_ID} <span style="float:right;"><strong>Fecha:</strong> ${formatFechaDDMMYYYY(excelSerialToDate(d.Fecha))}</p>
             <p style="border-left: 3px solid #8d6e63; padding-left: 10px; margin: 20px 0;">
                 <strong>Cliente:</strong> ${d.Cliente}
             </p>
@@ -406,11 +406,11 @@ function generarFactura(d) {
 
             <table style="width:100%; border-collapse:collapse; margin-top:15px;">
                 <tr>
-                    <td style="padding:5px 10px; text-align:right; color:#666;">Subtotal:</td>
+                    <td style="padding:5px 10px; text-align:right; font-weight:bold; color:#333;">Subtotal:</td>
                     <td style="padding:5px 10px; text-align:right; width:120px;">${n(sumaSubtotalesProductos)}</td>
                 </tr>
                 <tr>
-                    <td style="padding:5px 10px; text-align:right; color:#666;">Envío:</td>
+                    <td style="padding:5px 10px; text-align:right; color:#333;">Envío:</td>
                     <td style="padding:5px 10px; text-align:right;">C$ ${n(d.Envio)}</td>
                 </tr>
                 ${d.Desc_Global > 0 ? `

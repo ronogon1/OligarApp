@@ -343,10 +343,15 @@ async function ImprimirFactura(idFactura) {
 }
 
 function generarFactura(d) {
-    const n = v => parseFloat(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2 });
+    const n = (num) => parseFloat(num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+    // 1. Cálculo del Subtotal de productos (suma antes de envío y descuento global)
+    const sumaSubtotalesProductos = d.detalles.reduce((acc, it) => acc + parseFloat(it.Subtotal), 0);
+
+    // 2. Construcción de las filas de productos
     const filas = d.detalles.map(it => {
-        const precioOriginal = (parseFloat(it.Subtotal) + parseFloat(it.Desc_Prod)) / it.Cantidad;
+        // Cálculo del precio unitario base (Subtotal + Descuento) / Cantidad
+        const precioUnitarioBase = (parseFloat(it.Subtotal) + parseFloat(it.Desc_Prod)) / it.Cantidad;
 
         return `
             <tr>
@@ -354,13 +359,12 @@ function generarFactura(d) {
                     ${it.Cantidad}x ${it.Producto}
                     <br>
                     ${(it.Cantidad > 1 || it.Desc_Prod > 0) ? `
-                        <small style="color:#333;">Precio unitario: ${n(precioOriginal)}</small>
-                        ` : ''}
+                        <small style="color:#333;">Precio unitario: ${n(precioUnitarioBase)}</small>
+                    ` : ''}
                     ${it.Desc_Prod > 0 ? `
                         <small style="color:red; margin-left: 8px;">Desc: -${n(it.Desc_Prod)}</small>
                     ` : ''}
                 </td>
-
                 <td style="padding:10px; text-align:right; border-bottom:1px solid #eee;">
                     ${n(it.Subtotal)}
                 </td>
@@ -368,53 +372,70 @@ function generarFactura(d) {
         `;
     }).join('');
 
-    // --- Bloque de imágenes ---
+    // 3. Bloque de imágenes (grid de 3 columnas)
     const imagenesHTML = d.detalles
-        .filter(it => it.Imagen_Producto)
+        .filter(it => it.Imagen_Producto && it.Imagen_Producto !== "sin_foto")
         .map(it => `
             <div style="text-align:center;">
                 <img src="${it.Imagen_Producto}" 
-                     style="width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:5px;">
-                <p style="font-size:0.6em; color:#777;">${it.Producto}</p>
+                     onerror="this.src='https://via.placeholder.com/150?text=Sin+Foto'"
+                     style="width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:5px; border:1px solid #eee;">
+                <p style="font-size:9px; color:#666; margin-top:4px;">${it.Producto}</p>
             </div>
         `).join('');
 
-    document.getElementById('detalle-factura').innerHTML = `
-        <div style="margin-bottom:15px; display:flex; justify-content:space-between;">
-            <div>
-                <strong>Factura N°:</strong> ${d.Factura_ID}
-            </div>
-            <div>
-                <strong>Fecha:</strong> ${formatFechaDDMMYYYY(excelSerialToDate(d.Fecha))}
-            </div>
-        </div>
+    // 4. Composición final del HTML
+    const contenido = `
+        <div style="color:#444; font-size: 14px;">
+            <p><strong>Factura N°:</strong> ${d.Factura_ID} <span style="float:right;"><strong>Fecha:</strong> ${d.Fecha}</span></p>
+            <p style="border-left: 3px solid #8d6e63; padding-left: 10px; margin: 20px 0;">
+                <strong>Cliente:</strong> ${d.Cliente}
+            </p>
 
+            <table style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#f9f9f9;">
+                        <th style="text-align:left; padding:10px; border-bottom:2px solid #8d6e63;">Producto</th>
+                        <th style="text-align:right; padding:10px; border-bottom:2px solid #8d6e63;">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filas}
+                </tbody>
+            </table>
 
-        <div style="margin-bottom:15px; border-left:3px solid #8d6e63; padding-left:10px;">
-            <strong>Cliente:</strong> ${d.Cliente}
-        </div>
-
-        <table style="width:100%; border-collapse:collapse;">
-            <thead>
-                <tr style="background:#f4f4f4;">
-                    <th style="text-align:left; padding:8px;">Producto</th>
-                    <th style="text-align:right; padding:8px;">Subtotal</th>
+            <table style="width:100%; border-collapse:collapse; margin-top:15px;">
+                <tr>
+                    <td style="padding:5px 10px; text-align:right; color:#666;">Subtotal:</td>
+                    <td style="padding:5px 10px; text-align:right; width:120px;">${n(sumaSubtotalesProductos)}</td>
                 </tr>
-            </thead>
-            <tbody>${filas}</tbody>
-        </table>
+                <tr>
+                    <td style="padding:5px 10px; text-align:right; color:#666;">Envío:</td>
+                    <td style="padding:5px 10px; text-align:right;">C$ ${n(d.Envio)}</td>
+                </tr>
+                ${d.Desc_Global > 0 ? `
+                <tr>
+                    <td style="padding:5px 10px; text-align:right; color:red;">Desc. Global:</td>
+                    <td style="padding:5px 10px; text-align:right; color:red;">-C$ ${n(d.Desc_Global)}</td>
+                </tr>
+                ` : ''}
+                <tr>
+                    <td style="padding:10px; text-align:right; font-weight:bold; font-size:1.2em;">TOTAL:</td>
+                    <td style="padding:10px; text-align:right; font-weight:bold; font-size:1.2em; color:#5d4037;">
+                        C$ ${n(d.Total_Factura)}
+                    </td>
+                </tr>
+            </table>
 
-        <div style="text-align:right; margin-top:15px; border-top:2px solid #8d6e63; padding-top:10px;">
-            <p style="margin:2px;">Envío: C$ ${n(d.Envio)}</p>
-            ${d.Desc_Global > 0 ? `<p style="margin:2px; color:red;">Desc. Global: -C$ ${n(d.Desc_Global)}</p>` : ""}
-            <h3 style="margin:5px 0; color:#5d4037;">TOTAL: C$ ${n(d.Total_Factura)}</h3>
-        </div>
-
-        <div style="margin-top:20px; display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
-            ${imagenesHTML}
+            ${imagenesHTML ? `
+                <div style="margin-top:20px; display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; border-top:1px solid #eee; padding-top:20px;">
+                    ${imagenesHTML}
+                </div>
+            ` : ''}
         </div>
     `;
 
+    document.getElementById('detalle-factura').innerHTML = contenido;
     document.getElementById('modal-factura').style.display = 'block';
 }
 

@@ -209,28 +209,29 @@ document.getElementById('formVentas').onsubmit = async (e) => {
             [facturaID, document.getElementById('v_fecha').value, document.getElementById('v_cliente').value, envio, descG, totalF, "Activo"]
         ]);
 
-        // 4. Mostrar Factura con imágenes
-        generarFactura({
-            Factura_ID: facturaID,
-            Cliente: document.getElementById('v_cliente').value,
-            Envio: envio,
-            Desc_Global: descG,
-            Total_Factura: totalF,
-            detalles: datosVisual,
-            Fecha: document.getElementById('v_fecha').value
-        });
-
-        alert("Venta guardada exitosamente.");
+        // 4. Limpieza y Transición
         e.target.reset();
-        await leerExcel();
-        navegar('menu');
+        document.getElementById('contenedor-productos').innerHTML = '';
+        
+        // 5. Llamada a la factura oficial (Fuente única de verdad)
+        document.getElementById('mensaje').innerText = "Venta guardada. Generando factura...";
+        
+        // Esperamos un poco para que Excel procese los datos
+        setTimeout(async () => {
+            await ImprimirFactura(facturaID); 
+            await leerExcel(); // Refresca las tablas de consulta
+            document.getElementById('mensaje').innerText = "Listo."; // Se ejecuta DESPUÉS de mostrar la factura
+        }, 1200);
+
+        navegar('menu'); 
 
     } catch (err) {
         alert("Error al guardar: " + err.message);
+        document.getElementById('mensaje').innerText = "Error en el registro.";
+    } finally {
+        // ESTA ES LA ÚLTIMA SECCIÓN: Pase lo que pase, rehabilitamos el botón
+        btn.disabled = false;
     }
-
-    btn.disabled = false;
-    document.getElementById('mensaje').innerText = "Listo.";
 };
 
 // ==========================================
@@ -267,7 +268,7 @@ function mostrarEnPantalla(nombre, valores) {
         // Lógica de botón de impresión para facturas
         if (nombre === 'TFacturas') {
             if (i === 0) html += `<td>Acción</td>`;
-            else if (fila[0]) html += `<td><button onclick="reimprimirFacturaRelacional('${fila[0]}')">🖨️</button></td>`;
+            else if (fila[0]) html += `<td><button onclick="ImprimirFactura('${fila[0]}')">🖨️</button></td>`;
         }
         html += '</tr>';
     });
@@ -276,7 +277,7 @@ function mostrarEnPantalla(nombre, valores) {
     contenedor.innerHTML = html;
 }
 
-async function reimprimirFacturaRelacional(idFactura) {
+async function ImprimirFactura(idFactura) {
     try {
         const token = await getAuthToken();
 
@@ -351,10 +352,11 @@ function generarFactura(d) {
             <tr>
                 <td style="padding:10px; border-bottom:1px solid #eee;">
                     ${it.Cantidad}x ${it.Producto}
-
+                    <br>
+                    ${(it.Cantidad > 1 || it.Desc_Prod > 0) ? `
+                        <small style="color:#333;">Precio unitario: ${n(precioOriginal)}</small>
+                        ` : ''}
                     ${it.Desc_Prod > 0 ? `
-                        <br>
-                        <small style="color:#333;">Precio: ${n(precioOriginal)}</small>
                         <small style="color:red; margin-left: 8px;">Desc: -${n(it.Desc_Prod)}</small>
                     ` : ''}
                 </td>

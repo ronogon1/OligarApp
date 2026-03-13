@@ -53,7 +53,7 @@
 
     <div id="seccion-registro-ventas" style="display:none; max-width: 600px; margin: auto;">
         <button onclick="navegar('menu')" style="margin-bottom: 20px;">← Volver</button>
-        <h3 style="color: #5d4037;">Nueva Venta Multi-Producto</h3>
+        <h3 style="color: #5d4037;">Nueva Registro de Venta</h3>
         
         <form id="formVentas">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
@@ -83,7 +83,7 @@
         <h3>Buscador de Facturas</h3>
         <div style="display:flex; gap:10px; margin-bottom:20px;">
             <input type="text" id="busqueda_factura" placeholder="ID de Factura" style="flex:1;">
-            <button onclick="reimprimirFacturaRelacional(document.getElementById('busqueda_factura').value)">Buscar</button>
+            <button onclick="ImprimirFactura(document.getElementById('busqueda_factura').value)">Buscar</button>
         </div>
     </div>
 

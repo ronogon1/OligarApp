@@ -406,17 +406,17 @@ function generarFactura(d) {
 
             <table style="width:100%; border-collapse:collapse; margin-top:15px;">
                 <tr>
-                    <td style="padding:5px 10px; text-align:right; font-weight:bold; color:#333;">Subtotal:</td>
-                    <td style="padding:5px 10px; text-align:right; width:120px;">${n(sumaSubtotalesProductos)}</td>
+                    <td style="padding:2px 10px; text-align:right; font-weight:bold; color:#333;">Subtotal:</td>
+                    <td style="padding:2px 10px; text-align:right; font-weight:bold; width:120px;">${n(sumaSubtotalesProductos)}</td>
                 </tr>
                 <tr>
-                    <td style="padding:5px 10px; text-align:right; color:#333;">Envío:</td>
-                    <td style="padding:5px 10px; text-align:right;">C$ ${n(d.Envio)}</td>
+                    <td style="padding:2px 10px; text-align:right; color:#333;">Envío:</td>
+                    <td style="padding:2px 10px; text-align:right;">C$ ${n(d.Envio)}</td>
                 </tr>
                 ${d.Desc_Global > 0 ? `
                 <tr>
-                    <td style="padding:5px 10px; text-align:right; color:red;">Desc. Global:</td>
-                    <td style="padding:5px 10px; text-align:right; color:red;">-C$ ${n(d.Desc_Global)}</td>
+                    <td style="padding:2px 10px; text-align:right; color:red;">Desc. Global:</td>
+                    <td style="padding:2px 10px; text-align:right; color:red;">-C$ ${n(d.Desc_Global)}</td>
                 </tr>
                 ` : ''}
                 <tr>

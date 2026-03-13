@@ -43,21 +43,41 @@ document.getElementById('loginBtn').onclick = async () => {
 // 3. NAVEGACIÓN Y UI
 // ==========================================
 function navegar(pantalla) {
-    const secciones = ['seccion-login', 'seccion-menu', 'seccion-consulta-tablas', 'seccion-registro-ventas', 'seccion-gestion-facturas'];
+    // 1. Definimos todas las secciones existentes en el HTML
+    const secciones = [
+        'seccion-login', 
+        'seccion-menu', 
+        'seccion-consulta-tablas', 
+        'seccion-registro-ventas', 
+        'seccion-gestion-facturas'
+    ];
+
+    // 2. Ocultamos todas las secciones antes de mostrar la elegida
     secciones.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
     
+    // 3. Construimos el ID de destino y lo mostramos
     const destino = document.getElementById('seccion-' + pantalla);
     if (destino) {
         destino.style.display = 'block';
+
+        // --- LÓGICA ESPECÍFICA POR PANTALLA ---
+
+        // A. Si vamos al formulario de ventas
         if (pantalla === 'registro-ventas') {
-            // Solo limpiamos si NO estamos en modo edición
-            if (document.getElementById('formVentas').dataset.modo !== "edit") {
+            const form = document.getElementById('formVentas');
+            // Solo limpiamos y creamos fila nueva si NO estamos editando una factura existente
+            if (form.dataset.modo !== "edit") {
                 document.getElementById('contenedor-productos').innerHTML = '';
                 agregarFilaProducto();
             }
+        }
+
+        // B. Si vamos a la consulta de tablas, refrescamos datos automáticamente
+        if (pantalla === 'consulta-tablas') {
+            refrescarTablasManual(); 
         }
     }
 }
@@ -398,7 +418,7 @@ function generarFactura(d) {
             <table style="width:100%; border-collapse:collapse; margin-top:15px;">
                 <tr>
                     <td style="padding:2px 10px; text-align:right; font-weight:bold; color:#333;">Subtotal:</td>
-                    <td style="padding:2px 10px; text-align:right; font-weight:bold; width:120px;">${n(sumaSubtotalesProductos)}</td>
+                    <td style="padding:2px 10px; text-align:right; font-weight:bold; width:120px;">C$ ${n(sumaSubtotalesProductos)}</td>
                 </tr>
                 <tr>
                     <td style="padding:2px 10px; text-align:right; color:#333;">Envío:</td>

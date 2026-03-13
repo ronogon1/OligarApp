@@ -53,8 +53,11 @@ function navegar(pantalla) {
     if (destino) {
         destino.style.display = 'block';
         if (pantalla === 'registro-ventas') {
-            document.getElementById('contenedor-productos').innerHTML = '';
-            agregarFilaProducto(); // Inicia con una fila vacía
+            // Solo limpiamos si NO estamos en modo edición
+            if (document.getElementById('formVentas').dataset.modo !== "edit") {
+                document.getElementById('contenedor-productos').innerHTML = '';
+                agregarFilaProducto();
+            }
         }
     }
 }
@@ -63,6 +66,7 @@ function agregarFilaProducto() {
     const contenedor = document.getElementById('contenedor-productos');
     const div = document.createElement('div');
     div.className = 'fila-producto';
+    div.dataset.fileid = "sin_foto"; // Guardamos el fileId de la imagen aquí
     
     div.innerHTML = `
         <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 30px; gap:8px; align-items: center; margin-bottom:10px;">
@@ -83,7 +87,7 @@ function agregarFilaProducto() {
 }
 
 // ==========================================
-// 4. LÓGICA DE DATOS (READ/WRITE)
+// 4. LÓGICA DE DATOS (READ/WRITE/DELETE)
 // ==========================================
 async function leerExcel() {
     
@@ -102,6 +106,7 @@ async function leerExcel() {
             }
 
             const data = await resp.json();
+
             // Solo guardamos los valores, no dibujamos nada aquí
             resultados[nombre] = data.values || [];
             console.log(`[leerExcel] Datos de ${nombre} obtenidos con éxito.`);
@@ -124,6 +129,36 @@ async function escribirFilas(nombreTabla, filas) {
     return resp.ok;
 }
 
+async function eliminarRegistrosPrevios(idFactura) {
+    const token = await getAuthToken();
+    const tablas = ["TFacturas", "TDetalle"];
+
+    for (const nombreTabla of tablas) {
+        // 1. Obtener todos los datos de la tabla para buscar el ID
+        const urlRange = `${graphBaseUrl}/workbook/tables/${nombreTabla}/range`;
+        const resp = await fetch(urlRange, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await resp.json();
+
+        if (data.values && data.values.length > 0) {
+            // Buscamos los índices de las filas que coinciden con el ID
+            // El índice de la API es relativo al cuerpo de la tabla (sin encabezado), por eso restamos 1 si es necesario
+            // Pero lo más fácil es usar el endpoint de 'rows' directamente.
+            // Filtramos las filas que coinciden (empezando desde el final para no mover índices)
+            for (let i = data.values.length - 1; i >= 1; i--) {
+                if (data.values[i][0] && data.values[i][0].toString() === idFactura.toString()) {
+                    const filaIndex = i - 1; // El índice en 'rows' empieza en 0 para la primera fila de datos
+                    const urlDelete = `${graphBaseUrl}/workbook/tables/${nombreTabla}/rows/itemAt(index=${filaIndex})`;
+                    
+                    await fetch(urlDelete, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                }
+            }
+        }
+    }
+}
+
 
 // ==========================================
 // 5. PROCESO DE VENTA (CON FILEID DE IMAGEN)
@@ -131,29 +166,38 @@ async function escribirFilas(nombreTabla, filas) {
 document.getElementById('formVentas').onsubmit = async (e) => {
     e.preventDefault();
     const btn = e.submitter;
+    const form = e.target;
     btn.disabled = true;
-    document.getElementById('mensaje').innerText = "Guardando venta...";
+    
+    // DETECTAR SI ES EDICIÓN O NUEVA
+    const esEdicion = form.dataset.modo === "edit";
+    let facturaID = form.dataset.idFactura;
+    
+    document.getElementById('mensaje').innerText = esEdicion ? "Actualizando factura..." : "Guardando venta...";
 
     try {
         const token = await getAuthToken();
 
-        // 1. Obtener correlativo
-        const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
-        });
-        const dataC = await resC.json();
-
-        let proxId = 1;
-        if (dataC.values && dataC.values.length > 1) {
-            const ids = dataC.values.slice(1).map(f => parseInt(f[0].toString().substring(4)) || 0);
-            proxId = Math.max(...ids) + 1;
+        if (esEdicion) {
+            // PASO CRÍTICO: Borrar lo viejo antes de escribir lo nuevo con el mismo ID
+            await eliminarRegistrosPrevios(facturaID);
+        } else {
+            // Lógica normal para factura NUEVA 
+            // 1. Obtener correlativo
+            const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { 
+                headers: { 'Authorization': `Bearer ${token}` } 
+            });
+            const dataC = await resC.json();
+            let proxId = 1;
+            if (dataC.values && dataC.values.length > 1) {
+                const ids = dataC.values.slice(1).map(f => parseInt(f[0].toString().substring(4)) || 0);
+                proxId = Math.max(...ids) + 1;
+            }
+            facturaID = `${new Date().getFullYear()}${proxId.toString().padStart(4, '0')}`;
         }
-
-        const facturaID = `${new Date().getFullYear()}${proxId.toString().padStart(4, '0')}`;
 
         // 2. Procesar productos
         const filasDetalle = [];
-        const datosVisual = [];
         let sumaSubtotales = 0;
 
         for (let fila of document.querySelectorAll('.fila-producto')) {
@@ -164,8 +208,8 @@ document.getElementById('formVentas').onsubmit = async (e) => {
             const subtotal = (cant * precio) - desc;
 
             const archivo = fila.querySelector('.p_imagen')?.files[0];
-            let fileIdImg = "sin_foto";
-            let urlLocal = "";
+            // Si no hay archivo nuevo, intentamos mantener el que ya tenía la fila
+            let fileIdImg = fila.dataset.fileid || "sin_foto";
 
             // --- SUBIR IMAGEN A ONEDRIVE Y OBTENER FILEID ---
             if (archivo) {
@@ -182,19 +226,9 @@ document.getElementById('formVentas').onsubmit = async (e) => {
 
                 const dataUpload = await respUpload.json();
                 fileIdImg = dataUpload.id; // ← EL FILEID REAL
-
-                urlLocal = URL.createObjectURL(archivo);
             }
 
             filasDetalle.push([facturaID, nombre, cant, precio, desc, subtotal, fileIdImg]);
-
-            datosVisual.push({
-                Producto: nombre,
-                Cantidad: cant,
-                Desc_Prod: desc,
-                Subtotal: subtotal,
-                Imagen_Producto: urlLocal
-            });
 
             sumaSubtotales += subtotal;
         }
@@ -212,9 +246,7 @@ document.getElementById('formVentas').onsubmit = async (e) => {
         // 4. Limpieza y Transición
         e.target.reset();
         document.getElementById('contenedor-productos').innerHTML = '';
-        
-        // 5. Llamada a la factura oficial (Fuente única de verdad)
-        document.getElementById('mensaje').innerText = "Venta guardada. Generando factura...";
+        document.getElementById('mensaje').innerText = "Procesando...";
         
         // Esperamos un poco para que Excel procese los datos
         setTimeout(async () => {
@@ -223,7 +255,13 @@ document.getElementById('formVentas').onsubmit = async (e) => {
             document.getElementById('mensaje').innerText = "Listo."; // Se ejecuta DESPUÉS de mostrar la factura
         }, 1200);
 
-        navegar('menu'); 
+        // 1. Limpiamos los datos de edición para que la próxima venta no herede el ID viejo
+        form.dataset.modo = "";
+        form.dataset.idFactura = "";
+        form.querySelector('button[type="submit"]').innerText = "Guardar Venta e Imprimir Factura";
+
+        // 2. Cerramos la cortina y volvemos al menú
+        navegar('menu');
 
     } catch (err) {
         alert("Error al guardar: " + err.message);
@@ -237,6 +275,25 @@ document.getElementById('formVentas').onsubmit = async (e) => {
 // ==========================================
 // 6. RENDERIZADO Y CONSULTAS
 // ==========================================
+
+async function refrescarTablasManual() {
+    // 1. Preparamos el escenario (mostramos los DIVs)
+    navegar('consulta-tablas'); 
+    
+    // 2. Traemos los datos (Conexión)
+    const datosRecienLlegados = await leerExcel(); 
+    
+    // 3. Mandamos a dibujar cada tabla por separado
+    if (datosRecienLlegados.TFacturas) {
+        mostrarEnPantalla('TFacturas', datosRecienLlegados.TFacturas);
+    }
+    if (datosRecienLlegados.TDetalle) {
+        mostrarEnPantalla('TDetalle', datosRecienLlegados.TDetalle);
+    }
+    
+    document.getElementById('mensaje').innerText = "Tablas actualizadas.";
+}
+
 
 function mostrarEnPantalla(nombre, valores) {
     const ids = { 'TFacturas': 'tabla-facturas', 'TDetalle': 'tabla-detalle' };
@@ -253,7 +310,6 @@ function mostrarEnPantalla(nombre, valores) {
         return;
     }
 
-    // Generación del HTML (Tu lógica actual que está muy bien)
     let html = `<h4>${nombre}</h4>
                 <div style="overflow-x:auto;">
                 <table border="1" style="width:100%; border-collapse:collapse; background:white; font-size:12px;">`;
@@ -265,7 +321,6 @@ function mostrarEnPantalla(nombre, valores) {
             html += `<td style="padding:8px; border:1px solid #ddd;">${celda ?? ''}</td>`;
         });
         
-        // Lógica de botón de impresión para facturas
         if (nombre === 'TFacturas') {
             if (i === 0) html += `<td>Acción</td>`;
             else if (fila[0]) html += `<td><button onclick="ImprimirFactura('${fila[0]}')">🖨️</button></td>`;
@@ -277,70 +332,6 @@ function mostrarEnPantalla(nombre, valores) {
     contenedor.innerHTML = html;
 }
 
-async function ImprimirFactura(idFactura) {
-    try {
-        const token = await getAuthToken();
-
-        // --- 1. Leer cabecera ---
-        const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
-        });
-        const dC = await resC.json();
-        const fC = dC.values.find(f => f[0] && f[0].toString() === idFactura.toString());
-
-        // --- 2. Leer detalle ---
-        const resD = await fetch(`${graphBaseUrl}/workbook/tables/TDetalle/range`, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
-        });
-        const dD = await resD.json();
-
-        const detalles = [];
-
-        for (let f of dD.values) {
-            if (f[0] && f[0].toString() === idFactura.toString()) {
-
-                const fileIdImg = f[6];
-                let urlImagen = "";
-
-                if (fileIdImg && fileIdImg !== "sin_foto") {
-                    try {
-                        // Pedimos a la API los detalles del archivo, que incluyen el link de descarga directa
-                        const resImg = await fetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileIdImg}`, {
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        });
-                        const dataImg = await resImg.json();
-                        // Este campo contiene una URL temporal que el navegador SÍ puede renderizar
-                        urlImagen = dataImg["@microsoft.graph.downloadUrl"]; 
-                    } catch (err) {
-                        console.error("Error obteniendo URL de imagen:", err);
-                        urlImagen = "sin_foto.png"; // Imagen por defecto si falla
-                    }
-                }
-
-                detalles.push({
-                    Producto: f[1],
-                    Cantidad: f[2],
-                    Desc_Prod: f[4],
-                    Subtotal: f[5],
-                    Imagen_Producto: urlImagen
-                });
-            }
-        }
-
-        generarFactura({
-            Factura_ID: fC[0],
-            Fecha: fC[1],
-            Cliente: fC[2],
-            Envio: fC[3],
-            Desc_Global: fC[4],
-            Total_Factura: fC[5],
-            detalles
-        });
-
-    } catch (e) {
-        alert("Error al buscar factura.");
-    }
-}
 
 function generarFactura(d) {
     const n = (num) => parseFloat(num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -439,21 +430,145 @@ function generarFactura(d) {
     document.getElementById('modal-factura').style.display = 'block';
 }
 
-async function refrescarTablasManual() {
-    navegar('consulta-tablas'); // 1. Preparamos el escenario (mostramos los DIVs)
-    
-    const datosRecienLlegados = await leerExcel(); // 2. Traemos los datos (Conexión)
-    
-    // 3. Mandamos a dibujar cada tabla por separado
-    if (datosRecienLlegados.TFacturas) {
-        mostrarEnPantalla('TFacturas', datosRecienLlegados.TFacturas);
+
+async function ImprimirFactura(idFactura) {
+    try {
+        const token = await getAuthToken();
+
+        // --- 1. Leer cabecera ---
+        const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+        });
+        const dC = await resC.json();
+        const fC = dC.values.find(f => f[0] && f[0].toString() === idFactura.toString());
+
+        // Validación preventiva
+        if (!fC) {
+            alert("Error: No se encontró la cabecera de la factura " + idFactura);
+            return; // Detenemos la ejecución para no intentar leer datos que no existen
+        }
+
+        // --- 2. Leer detalle ---
+        const resD = await fetch(`${graphBaseUrl}/workbook/tables/TDetalle/range`, { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+        });
+        const dD = await resD.json();
+
+        const detalles = [];
+        for (let f of dD.values) {
+            if (f[0] && f[0].toString() === idFactura.toString()) {
+
+                const fileIdImg = f[6];
+                let urlImagen = "";
+
+                if (fileIdImg && fileIdImg !== "sin_foto") {
+                    try {
+                        // Pedimos a la API los detalles del archivo, que incluyen el link de descarga directa
+                        const resImg = await fetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileIdImg}`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        const dataImg = await resImg.json();
+                        // Este campo contiene una URL temporal que el navegador SÍ puede renderizar
+                        urlImagen = dataImg["@microsoft.graph.downloadUrl"]; 
+                    } catch (err) {
+                        console.error("Error obteniendo URL de imagen:", err);
+                        urlImagen = "sin_foto.png"; // Imagen por defecto si falla
+                    }
+                }
+
+                detalles.push({
+                    Producto: f[1],
+                    Cantidad: f[2],
+                    Desc_Prod: f[4],
+                    Subtotal: f[5],
+                    Imagen_Producto: urlImagen
+                });
+            }
+        }
+
+        generarFactura({
+            Factura_ID: fC[0],
+            Fecha: fC[1],
+            Cliente: fC[2],
+            Envio: fC[3],
+            Desc_Global: fC[4],
+            Total_Factura: fC[5],
+            detalles
+        });
+
+    } catch (e) {
+        alert("Error al buscar factura.");
     }
-    if (datosRecienLlegados.TDetalle) {
-        mostrarEnPantalla('TDetalle', datosRecienLlegados.TDetalle);
-    }
-    
-    document.getElementById('mensaje').innerText = "Tablas actualizadas.";
 }
+
+
+async function cargarFacturaParaEditar(idFactura) {
+    if (!idFactura) return alert("Ingresa un ID");
+    document.getElementById('mensaje').innerText = "Buscando factura...";
+
+    try {
+        const token = await getAuthToken();
+        
+        const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const dC = await resC.json();
+        const fC = dC.values.find(f => f[0] && f[0].toString() === idFactura.toString());
+
+        if (!fC) return alert("Factura no encontrada");
+
+        const resD = await fetch(`${graphBaseUrl}/workbook/tables/TDetalle/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const dD = await resD.json();
+        const items = dD.values.filter(f => f[0] && f[0].toString() === idFactura.toString());
+
+        navegar('registro-ventas');
+        
+        // Marcamos el formulario con el ID existente
+        const form = document.getElementById('formVentas');
+        form.dataset.modo = "edit";
+        form.dataset.idFactura = idFactura; 
+        
+        // Cambiamos el texto del botón para que el usuario sepa que está actualizando
+        form.querySelector('button[type="submit"]').innerText = `Actualizar Factura ${idFactura}`;
+
+        document.getElementById('v_cliente').value = fC[2];
+        const dObj = excelSerialToDate(fC[1]);
+        document.getElementById('v_fecha').value = dObj.toISOString().split('T')[0];
+        document.getElementById('v_envio').value = fC[3];
+        document.getElementById('v_desc_global').value = fC[4];
+
+        const contenedor = document.getElementById('contenedor-productos');
+        contenedor.innerHTML = '';
+
+        items.forEach(it => {
+            agregarFilaProducto();
+            const filas = contenedor.querySelectorAll('.fila-producto');
+            const ultima = filas[filas.length - 1];
+            ultima.querySelector('.p_nombre').value = it[1];
+            ultima.querySelector('.p_cantidad').value = it[2];
+            ultima.querySelector('.p_precio').value = it[3];
+            ultima.querySelector('.p_descuento').value = it[4];
+            // Nota: La imagen se tendría que volver a subir si se cambia, 
+            // pero si no se toca el input file, manejaremos la lógica para no perder el fileId.
+        
+            ultima.dataset.fileid = it[6] || "sin_foto";
+        
+        });
+
+        document.getElementById('mensaje').innerText = `Editando Factura ${idFactura}`;
+    } catch (e) {
+        alert("Error: " + e.message);
+    }
+}
+
+
+function cerrarFacturaYSalir() {
+    document.getElementById('modal-factura').style.display = 'none'; // Acción 1: Esconder
+    navegar('menu');                                                 // Acción 2: Navegar
+}
+
+
+// ==========================================
+// 7. FORMATO (UTILITIES)
+// ==========================================
 
 function excelSerialToDate(serial) {
     const excelEpoch = new Date(1899, 11, 30); // Excel base date

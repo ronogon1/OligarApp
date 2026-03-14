@@ -49,6 +49,8 @@
         </button>
         <div id="tabla-facturas" class="tarjeta"></div>
         <div id="tabla-detalle" class="tarjeta"></div>
+        <div id="tabla-clientes"></div>
+        <div id="tabla-cxc"></div>
     </div>
 
     <div id="seccion-registro-ventas" style="display:none; max-width: 600px; margin: auto;">
@@ -78,21 +80,33 @@
         </form>
     </div>
 
-    <div id="seccion-gestion-facturas" style="display:none; max-width: 600px; margin: auto;">
+    <div id="seccion-gestion-facturas" style="display:none; max-width: 700px; margin: auto;">
         <button onclick="navegar('menu')">← Volver</button>
-        
         <h3>Gestión de Facturas</h3>
         
-        <div style="display:flex; gap:10px; margin-bottom:20px;">
-            <input type="text" id="busqueda_factura" placeholder="ID de Factura" style="flex:1;">
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <input type="text" id="busqueda_factura" placeholder="Ingrese ID de Factura..." style="flex:1;">
+            <button onclick="previsualizarFactura()" style="background:#5d4037; color:white;">🔍 Cargar Factura</button>
+        </div>
+
+        <div id="panel-previsualizacion" style="display:none; border: 1px solid #ddd; padding: 20px; border-radius: 8px; background: #fff;">
             
-            <button onclick="cargarFacturaParaEditar(document.getElementById('busqueda_factura').value)" 
-                    style="background:#5d4037; color: white;">✏️ Editar</button>
-            
-            <button onclick="ImprimirFactura(document.getElementById('busqueda_factura').value)">🖨️ Reimprimir</button>
-            
-            <button onclick="AnularFactura(document.getElementById('busqueda_factura').value)"
-                    style="background:#c62828; color: white;">🚫 Anular</button>
+            <div id="status-badge" style="text-align: center; font-weight: bold; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                ESTADO: <span id="txt-status">---</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                <div><strong>Cliente:</strong> <input type="text" id="pre_cliente" disabled style="width:100%;"></div>
+                <div><strong>Fecha:</strong> <input type="text" id="pre_fecha" disabled style="width:100%;"></div>
+                <div><strong>Total:</strong> <input type="text" id="pre_total" disabled style="width:100%;"></div>
+                <div><strong>Envío:</strong> <input type="text" id="pre_envio" disabled style="width:100%;"></div>
+            </div>
+
+            <div style="display:flex; gap:10px; justify-content: center; border-top: 1px solid #eee; pt: 15px;">
+                <button id="btn-pre-editar" style="background:#5d4037; color: white;">✏️ Editar</button>
+                <button id="btn-pre-imprimir" style="background:#8d6e63; color: white;">🖨️ Reimprimir</button>
+                <button id="btn-pre-anular" style="background:#c62828; color: white;">🚫 Anular</button>
+            </div>
         </div>
     </div>
 

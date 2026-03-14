@@ -68,7 +68,6 @@ function navegar(pantalla) {
         // A. Si vamos al formulario de ventas
         if (pantalla === 'registro-ventas') {
             const form = document.getElementById('formVentas');
-            // Solo limpiamos y creamos fila nueva si NO estamos editando una factura existente
             if (form.dataset.modo !== "edit") {
                 document.getElementById('contenedor-productos').innerHTML = '';
                 agregarFilaProducto();
@@ -78,6 +77,17 @@ function navegar(pantalla) {
         // B. Si vamos a la consulta de tablas, refrescamos datos automáticamente
         if (pantalla === 'consulta-tablas') {
             refrescarTablasManual(); 
+        }
+
+        // C. INTEGRACIÓN NUEVA: Si vamos a Gestión de Facturas
+        if (pantalla === 'gestion-facturas') {
+            // Ocultamos el panel de previsualización para que aparezca limpio
+            const panel = document.getElementById('panel-previsualizacion');
+            if (panel) panel.style.display = 'none';
+            
+            // Limpiamos el input de búsqueda
+            const inputBusqueda = document.getElementById('busqueda_factura');
+            if (inputBusqueda) inputBusqueda.value = '';
         }
     }
 }
@@ -448,6 +458,57 @@ function generarFactura(d) {
 
     document.getElementById('detalle-factura').innerHTML = contenido;
     document.getElementById('modal-factura').style.display = 'block';
+}
+
+
+async function previsualizarFactura() {
+    const id = document.getElementById('busqueda_factura').value;
+    if (!id) return alert("Ingresa un ID");
+
+    try {
+        const token = await getAuthToken();
+        const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+        });
+        const dC = await resC.json();
+        const fC = dC.values.find(f => f[0] && f[0].toString() === id.toString());
+
+        if (!fC) return alert("Factura no encontrada");
+
+        // 1. Mostrar el panel
+        document.getElementById('panel-previsualizacion').style.display = 'block';
+
+        // 2. Llenar campos bloqueados
+        document.getElementById('pre_cliente').value = fC[2];
+        document.getElementById('pre_fecha').value = excelSerialToDate(fC[1]).toLocaleDateString();
+        document.getElementById('pre_total').value = fC[5];
+        document.getElementById('pre_envio').value = fC[3];
+
+        // 3. Gestionar el Estatus (Color y Texto)
+        const estado = fC[6] || "Activo"; // Columna 7
+        const badge = document.getElementById('status-badge');
+        const txtStatus = document.getElementById('txt-status');
+        
+        txtStatus.innerText = estado.toUpperCase();
+        
+        if (estado === "Anulado") {
+            badge.style.background = "#ffebee"; 
+            badge.style.color = "#c62828";
+            document.getElementById('btn-pre-editar').style.display = 'none'; // No se edita lo anulado
+        } else {
+            badge.style.background = "#e8f5e9"; 
+            badge.style.color = "#2e7d32";
+            document.getElementById('btn-pre-editar').style.display = 'block';
+        }
+
+        // 4. Configurar eventos de los botones
+        document.getElementById('btn-pre-editar').onclick = () => cargarFacturaParaEditar(id);
+        document.getElementById('btn-pre-imprimir').onclick = () => ImprimirFactura(id);
+        document.getElementById('btn-pre-anular').onclick = () => AnularFactura(id);
+
+    } catch (e) {
+        alert("Error al cargar vista previa: " + e.message);
+    }
 }
 
 

@@ -461,6 +461,7 @@ function generarFactura(d) {
 }
 
 
+
 async function previsualizarFactura() {
     const id = document.getElementById('busqueda_factura').value;
     if (!id) return alert("Ingresa un ID");
@@ -485,26 +486,42 @@ async function previsualizarFactura() {
         document.getElementById('pre_envio').value = fC[3];
 
         // 3. Gestionar el Estatus (Color y Texto)
-        const estado = fC[6] || "Activo"; // Columna 7
+        const estado = fC[6] || "Activo"; // Columna 7 (G)
         const badge = document.getElementById('status-badge');
         const txtStatus = document.getElementById('txt-status');
         
         txtStatus.innerText = estado.toUpperCase();
         
+        // Elementos de botones para manipular su visibilidad
+        const btnEditar = document.getElementById('btn-pre-editar');
+        const btnAnular = document.getElementById('btn-pre-anular');
+        const btnActivar = document.getElementById('btn-pre-activar');
+
         if (estado === "Anulado") {
             badge.style.background = "#ffebee"; 
             badge.style.color = "#c62828";
-            document.getElementById('btn-pre-editar').style.display = 'none'; // No se edita lo anulado
+            // Si está anulada: Ocultamos Editar y Anular, Mostramos Reactivar
+            btnEditar.style.display = 'none';
+            btnAnular.style.display = 'none';
+            if(btnActivar) btnActivar.style.display = 'block'; 
         } else {
             badge.style.background = "#e8f5e9"; 
             badge.style.color = "#2e7d32";
-            document.getElementById('btn-pre-editar').style.display = 'block';
+            // Si está activa: Mostramos Editar y Anular, Ocultamos Reactivar
+            btnEditar.style.display = 'block';
+            btnAnular.style.display = 'block';
+            if(btnActivar) btnActivar.style.display = 'none';
         }
 
         // 4. Configurar eventos de los botones
-        document.getElementById('btn-pre-editar').onclick = () => cargarFacturaParaEditar(id);
+        btnEditar.onclick = () => cargarFacturaParaEditar(id);
         document.getElementById('btn-pre-imprimir').onclick = () => ImprimirFactura(id);
-        document.getElementById('btn-pre-anular').onclick = () => AnularFactura(id);
+        btnAnular.onclick = () => cambiarEstadoFactura(id, "Anulado")
+        
+        // Asignamos la nueva función al botón de activar (si existe)
+        if(btnActivar) {
+            btnActivar.onclick = () => cambiarEstadoFactura(id, "Activo");
+        }
 
     } catch (e) {
         alert("Error al cargar vista previa: " + e.message);
@@ -641,51 +658,32 @@ async function cargarFacturaParaEditar(idFactura) {
 }
 
 
-async function AnularFactura(idFactura) {
-    if (!idFactura) return alert("Ingresa un ID");
-    
-    const confirmar = confirm(`¿Estás seguro de que deseas ANULAR la factura ${idFactura}? Esto no se puede deshacer.`);
+async function cambiarEstadoFactura(id, nuevoEstado) {
+    const confirmar = confirm(`¿Estás seguro de cambiar el estado de la factura ${id} a ${nuevoEstado}?`);
     if (!confirmar) return;
-
-    document.getElementById('mensaje').innerText = "Anulando factura...";
 
     try {
         const token = await getAuthToken();
-        
-        // 1. Buscamos la fila en Excel para saber su índice
+        // 1. Buscamos la fila para saber cuál actualizar
         const res = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { 
             headers: { 'Authorization': `Bearer ${token}` } 
         });
         const data = await res.json();
-        
-        // Buscamos el índice de la fila (restando 1 por el encabezado)
-        const filaIndex = data.values.findIndex(f => f[0] && f[0].toString() === idFactura.toString()) - 1;
+        const filaIndex = data.values.findIndex(f => f[0] && f[0].toString() === id.toString());
 
-        if (filaIndex < 0) return alert("Factura no encontrada.");
+        if (filaIndex === -1) return alert("Error: No se encontró la fila en Excel.");
 
-        // 2. Actualizamos SOLO la columna de estado (Columna G = índice 6)
-        // Usamos PATCH para actualizar una celda específica
-        const urlUpdate = `${graphBaseUrl}/workbook/tables/TFacturas/rows/itemAt(index=${filaIndex})`;
-        
-        // Obtenemos la fila actual para no perder los otros datos, solo cambiamos el índice 6
-        const filaActual = data.values[filaIndex + 1];
-        filaActual[6] = "Anulado"; 
-
-        await fetch(urlUpdate, {
+        // 2. Actualizamos la columna G (índice 6) de esa fila
+        await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/columns('Estado')/headerRowRange/offset(rowOffset=${filaIndex},columnOffset=0)`, {
             method: 'PATCH',
-            headers: { 
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json' 
-            },
-            body: JSON.stringify({ values: [filaActual] })
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ values: [[nuevoEstado]] })
         });
 
-        alert(`Factura ${idFactura} anulada con éxito.`);
-        await leerExcel(); // Refrescamos las tablas
-        document.getElementById('mensaje').innerText = "Factura anulada.";
-
-    } catch (err) {
-        alert("Error al anular: " + err.message);
+        alert(`Factura ${id} ahora está ${nuevoEstado}`);
+        previsualizarFactura(); // Refrescamos la vista previa para ver el cambio
+    } catch (e) {
+        alert("Error al cambiar estado: " + e.message);
     }
 }
 

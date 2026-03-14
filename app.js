@@ -659,31 +659,52 @@ async function cargarFacturaParaEditar(idFactura) {
 
 
 async function cambiarEstadoFactura(id, nuevoEstado) {
-    const confirmar = confirm(`¿Estás seguro de cambiar el estado de la factura ${id} a ${nuevoEstado}?`);
+    const confirmar = confirm(`¿Reactivar factura ${id}?`);
     if (!confirmar) return;
 
     try {
         const token = await getAuthToken();
-        // 1. Buscamos la fila para saber cuál actualizar
+        
+        // 1. Obtenemos el rango completo para localizar la fila exacta
         const res = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { 
             headers: { 'Authorization': `Bearer ${token}` } 
         });
         const data = await res.json();
-        const filaIndex = data.values.findIndex(f => f[0] && f[0].toString() === id.toString());
+        
+        // 2. Localizamos la posición en el array
+        const filaEncontradaIndex = data.values.findIndex(f => f[0] && f[0].toString() === id.toString());
+        
+        if (filaEncontradaIndex === -1) return alert("No se encontró la factura.");
 
-        if (filaIndex === -1) return alert("Error: No se encontró la fila en Excel.");
+        // 3. Calculamos el índice para itemAt (fila actual del array menos 1 del encabezado)
+        const apiIndex = filaEncontradaIndex - 1;
 
-        // 2. Actualizamos la columna G (índice 6) de esa fila
-        await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/columns('Estado')/headerRowRange/offset(rowOffset=${filaIndex},columnOffset=0)`, {
+        // 4. Clonamos la fila y cambiamos SOLO el estado (Columna G = índice 6)
+        const filaParaActualizar = [...data.values[filaEncontradaIndex]];
+        filaParaActualizar[6] = nuevoEstado; 
+
+        // 5. Enviamos el PATCH a la fila específica
+        const urlUpdate = `${graphBaseUrl}/workbook/tables/TFacturas/rows/itemAt(index=${apiIndex})`;
+        
+        const resp = await fetch(urlUpdate, {
             method: 'PATCH',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ values: [[nuevoEstado]] })
+            headers: { 
+                'Authorization': `Bearer ${token}`, 
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ values: [filaParaActualizar] })
         });
 
-        alert(`Factura ${id} ahora está ${nuevoEstado}`);
-        previsualizarFactura(); // Refrescamos la vista previa para ver el cambio
+        if (resp.ok) {
+            alert(`Éxito: Factura ${id} ahora está ${nuevoEstado}`);
+            // Recargamos la previsualización para que el badge cambie a verde/rojo solo
+            previsualizarFactura(); 
+        } else {
+            alert("Error al guardar en Excel. Revisa la conexión.");
+        }
+
     } catch (e) {
-        alert("Error al cambiar estado: " + e.message);
+        alert("Error técnico: " + e.message);
     }
 }
 

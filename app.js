@@ -449,6 +449,11 @@ function generarFactura(d) {
 
     // 1. Cálculo del Subtotal de productos (suma antes de envío y descuento global)
     const sumaSubtotalesProductos = d.detalles.reduce((acc, it) => acc + parseFloat(it.Subtotal), 0);
+    
+    // Cálculo de saldo para lógica de visibilidad (Total - Anticipo)
+    const totalFactura = parseFloat(d.Total_Factura) || 0;
+    const anticipo = parseFloat(d.Anticipo) || 0;
+    const saldoPendiente = totalFactura - anticipo;
 
     // 2. Construcción de las filas de productos
     const filas = d.detalles.map(it => {
@@ -488,8 +493,18 @@ function generarFactura(d) {
 
     // 4. Composición final del HTML
     const contenido = `
-        <div style="color:#444; font-size: 14px;">
-            <p><strong>Factura N°:</strong> ${d.Factura_ID} <span style="float:right;"><strong>Fecha:</strong> ${formatFechaDDMMYYYY(excelSerialToDate(d.Fecha))}</p>
+        <div style="color:#444; font-size: 14px; font-family: sans-serif;">
+            
+            <div style="text-align: center; margin-bottom: 20px;">
+                <img src="TU_LOGO_EN_BASE64_O_URL" style="width: 80px; margin-bottom: 10px;">
+                <h2 style="margin: 0; color: #5d4037; letter-spacing: 1px;">OLIGAR CROCHET</h2>
+                <i style="color: #8d6e63; font-size: 13px;">"Creando con amor"</i>
+                <p style="margin: 5px 0; font-size: 12px;">Managua, Nicaragua | Cel: 7841 1119</p>
+            </div>
+
+            <hr style="border: none; border-top: 2px solid #8d6e63; margin-bottom: 15px;">
+
+            <p><strong>Factura N°:</strong> ${d.Factura_ID} <span style="float:right;"><strong>Fecha:</strong> ${formatFechaDDMMYYYY(excelSerialToDate(d.Fecha))}</span></p>
             <p style="border-left: 3px solid #8d6e63; padding-left: 10px; margin: 20px 0;">
                 <strong>Cliente:</strong> ${d.Cliente}
             </p>
@@ -524,10 +539,20 @@ function generarFactura(d) {
                 <tr>
                     <td style="padding:10px; text-align:right; font-weight:bold; font-size:1.2em;">TOTAL:</td>
                     <td style="padding:10px; text-align:right; font-weight:bold; font-size:1.2em; color:#5d4037;">
-                        C$ ${n(d.Total_Factura)}
+                        C$ ${n(totalFactura)}
                     </td>
                 </tr>
             </table>
+
+            <div style="text-align: center; margin-top: 20px; padding: 10px; border-top: 1px solid #eee;">
+                ${saldoPendiente <= 0 ? `
+                    <h2 style="color: #c62828; margin: 0; letter-spacing: 5px; font-weight: bold;">CANCELADO</h2>
+                ` : `
+                    <span style="color: #2196f3; font-weight: bold; font-size: 1.1em;">Anticipo: C$ ${n(anticipo)}</span>
+                    <span style="margin: 0 10px; color: #ccc;">|</span>
+                    <span style="color: #c62828; font-weight: bold; font-size: 1.1em;">Saldo pendiente: C$ ${n(saldoPendiente)}</span>
+                `}
+            </div>
 
             ${imagenesHTML ? `
                 <div style="margin-top:20px; display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; border-top:1px solid #eee; padding-top:20px;">
@@ -682,6 +707,7 @@ async function ImprimirFactura(idFactura) {
             Envio: fC[3],
             Desc_Global: fC[4],
             Total_Factura: fC[5],
+            Anticipo: fC[7],
             detalles
         });
 

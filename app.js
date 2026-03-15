@@ -559,20 +559,33 @@ async function previsualizarFactura() {
         // 1. Mostrar el panel
         document.getElementById('panel-previsualizacion').style.display = 'block';
 
-        // 2. Llenar campos bloqueados
+        // 2. Llenar campos bloqueados (Mapeo de columnas Excel)
+        // fC[2]=Cliente, fC[1]=Fecha, fC[5]=Total, fC[3]=Envío, fC[7]=Pagado
         document.getElementById('pre_cliente').value = fC[2];
         document.getElementById('pre_fecha').value = excelSerialToDate(fC[1]).toLocaleDateString();
-        document.getElementById('pre_total').value = fC[5];
-        document.getElementById('pre_envio').value = fC[3];
+        
+        const totalFactura = parseFloat(fC[5]) || 0;
+        const totalPagado  = parseFloat(fC[7]) || 0;
+        const saldo        = totalFactura - totalPagado;
+
+        document.getElementById('pre_total').value = "C$ " + totalFactura.toLocaleString('en-US', {minimumFractionDigits:2});
+        document.getElementById('pre_envio').value = "C$ " + (parseFloat(fC[3]) || 0).toLocaleString('en-US', {minimumFractionDigits:2});
+        
+        // Llenado de Pagado y Saldo (asegurando que los IDs existan en el HTML)
+        if(document.getElementById('pre_pagado')) {
+            document.getElementById('pre_pagado').value = "C$ " + totalPagado.toLocaleString('en-US', {minimumFractionDigits:2});
+        }
+        if(document.getElementById('pre_saldo')) {
+            document.getElementById('pre_saldo').value = "C$ " + saldo.toLocaleString('en-US', {minimumFractionDigits:2});
+        }
 
         // 3. Gestionar el Estatus (Color y Texto)
-        const estado = fC[6] || "Activo"; // Columna 7 (G)
+        const estado = fC[6] || "Activo"; // Columna G
         const badge = document.getElementById('status-badge');
         const txtStatus = document.getElementById('txt-status');
         
         txtStatus.innerText = estado.toUpperCase();
         
-        // Elementos de botones para manipular su visibilidad
         const btnEditar = document.getElementById('btn-pre-editar');
         const btnAnular = document.getElementById('btn-pre-anular');
         const btnActivar = document.getElementById('btn-pre-activar');
@@ -580,14 +593,12 @@ async function previsualizarFactura() {
         if (estado === "Anulado") {
             badge.style.background = "#ffebee"; 
             badge.style.color = "#c62828";
-            // Si está anulada: Ocultamos Editar y Anular, Mostramos Reactivar
             btnEditar.style.display = 'none';
             btnAnular.style.display = 'none';
             if(btnActivar) btnActivar.style.display = 'block'; 
         } else {
             badge.style.background = "#e8f5e9"; 
             badge.style.color = "#2e7d32";
-            // Si está activa: Mostramos Editar y Anular, Ocultamos Reactivar
             btnEditar.style.display = 'block';
             btnAnular.style.display = 'block';
             if(btnActivar) btnActivar.style.display = 'none';
@@ -596,14 +607,14 @@ async function previsualizarFactura() {
         // 4. Configurar eventos de los botones
         btnEditar.onclick = () => cargarFacturaParaEditar(id);
         document.getElementById('btn-pre-imprimir').onclick = () => ImprimirFactura(id);
-        btnAnular.onclick = () => cambiarEstadoFactura(id, "Anulado")
+        btnAnular.onclick = () => cambiarEstadoFactura(id, "Anulado");
         
-        // Asignamos la nueva función al botón de activar (si existe)
         if(btnActivar) {
             btnActivar.onclick = () => cambiarEstadoFactura(id, "Activo");
         }
 
     } catch (e) {
+        console.error(e);
         alert("Error al cargar vista previa: " + e.message);
     }
 }

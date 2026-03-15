@@ -118,16 +118,20 @@
                     <input type="text" id="pre_fecha" disabled style="width:100%; background: #f9f9f9;">
                 </div>
                 <div>
-                    <strong style="font-size: 0.8em; color: #555;">Total Factura:</strong> 
+                    <strong style="font-size: 0.8em; color: #555;">Total Venta:</strong> 
                     <input type="text" id="pre_total" disabled style="width:100%; font-weight: bold;">
                 </div>
                 <div>
-                    <strong style="font-size: 0.8em; color: #2e7d32;">Total Pagado:</strong> 
-                    <input type="text" id="pre_pagado" disabled style="width:100%; color: #2e7d32; background: #f1f8e9; font-weight: bold;">
+                    <strong style="font-size: 0.8em; color: #555;">Envío (C$):</strong> 
+                    <input type="text" id="pre_envio" disabled style="width:100%; background: #f9f9f9;">
                 </div>
-                <div style="grid-column: span 2;">
-                    <strong style="font-size: 0.8em; color: #c62828;">Saldo Restante:</strong> 
-                    <input type="text" id="pre_saldo" disabled style="width:100%; color: #c62828; background: #fff5f5; font-weight: bold; font-size: 1.1em; text-align: center;">
+                <div>
+                    <strong style="font-size: 0.8em; color: #2e7d32;">Total Pagado:</strong> 
+                    <input type="text" id="pre_pagado" disabled style="width:100%; color: #2e7d32; background: #f1f8e9;">
+                </div>
+                <div>
+                    <strong style="font-size: 0.8em; color: #c62828;">Saldo Pendiente:</strong> 
+                    <input type="text" id="pre_saldo" disabled style="width:100%; color: #c62828; background: #fff5f5;">
                 </div>
             </div>
 
@@ -135,6 +139,7 @@
                 <button id="btn-pre-editar" style="background:#5d4037;">✏️ Editar</button>
                 <button id="btn-pre-imprimir" style="background:#8d6e63;">🖨️ Reimprimir</button>
                 <button id="btn-pre-anular" style="background:#c62828;">🚫 Anular</button>
+                <button id="btn-pre-activar" style="background:#2e7d32; display:none;">✅ Reactivar</button>
             </div>
         </div>
     </div>

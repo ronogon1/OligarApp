@@ -15,6 +15,8 @@ const graphBaseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/$
 const productosFolderId = "56163DD91D08F884!saaf6f36dee0d406092c3d80f859b3981";
 const msalInstance = new msal.PublicClientApplication(msalConfig);
 
+let listaClientesGlobal = []; // Aquí guardaremos los nombres para buscar rápido
+
 // ==========================================
 // 2. AUTENTICACIÓN
 // ==========================================
@@ -117,9 +119,6 @@ function agregarFilaProducto() {
 }
 
 
-// Variable global para los clientes (se debe llenar al iniciar la app o entrar a ventas)
-let listaClientesGlobal = []; 
-
 async function cargarListaClientes() {
     const token = await getAuthToken();
     const res = await fetch(`${graphBaseUrl}/workbook/tables/TClientes/range`, { 
@@ -199,6 +198,59 @@ async function leerExcel() {
         }
     }
     return resultados; // Devolvemos el objeto con toda la información
+}
+
+
+async function actualizarMemoriaClientes() {
+    try {
+        const token = await getAuthToken();
+        const res = await fetch(`${graphBaseUrl}/workbook/tables/TClientes/range`, { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+        });
+        const data = await res.json();
+        
+        // Convertimos las filas de Excel en una lista simple de nombres
+        // Saltamos la primera fila (encabezados) con .slice(1)
+        listaClientesGlobal = data.values.slice(1).map(fila => fila[1]); 
+        console.log("Clientes cargados:", listaClientesGlobal.length);
+    } catch (e) {
+        console.error("Error cargando clientes para el buscador:", e);
+    }
+}
+
+
+document.getElementById('v_cliente').addEventListener('input', function(e) {
+    const escritura = e.target.value.toLowerCase();
+    const contenedorSugerencias = document.getElementById('sugerencias-clientes');
+
+    // Si no hay nada escrito o es muy poco, ocultar menú
+    if (escritura.length < 1) {
+        contenedorSugerencias.style.display = 'none';
+        return;
+    }
+
+    // Filtrar clientes que contengan lo que escribiste (como "ROGER")
+    const coincidencias = listaClientesGlobal.filter(nombre => 
+        nombre && nombre.toLowerCase().includes(escritura)
+    );
+
+    if (coincidencias.length > 0) {
+        // Generar los cuadritos de cada cliente encontrado
+        contenedorSugerencias.innerHTML = coincidencias.map(nombre => `
+            <div class="sugerencia-item" onclick="seleccionarClienteSug('${nombre}')">
+                ${nombre}
+            </div>
+        `).join('');
+        contenedorSugerencias.style.display = 'block';
+    } else {
+        contenedorSugerencias.style.display = 'none';
+    }
+});
+
+// Función para cuando haces click en un nombre de la lista
+function seleccionarClienteSug(nombreSeleccionado) {
+    document.getElementById('v_cliente').value = nombreSeleccionado;
+    document.getElementById('sugerencias-clientes').style.display = 'none';
 }
 
 

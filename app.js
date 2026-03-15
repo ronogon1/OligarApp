@@ -749,7 +749,7 @@ async function cargarFacturaParaEditar(idFactura) {
         const resA = await fetch(`${graphBaseUrl}/workbook/tables/TAnticipos/range`, { headers: { 'Authorization': `Bearer ${token}` } });
         const dA = await resA.json();
         // Filtramos anticipos donde la columna 1 coincida con el idFactura
-        const pagos = dA.values.filter(f => f[1] && f[0].toString() === idFactura.toString());
+        const pagos = dA.values.filter(f => f[1] && f[1].toString() === idFactura.toString());
         // ------------------------------------
 
         navegar('registro-ventas');

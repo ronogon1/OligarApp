@@ -495,18 +495,27 @@ function generarFactura(d) {
     const contenido = `
         <div style="color:#444; font-size: 14px; font-family: sans-serif;">
             
-            <div style="text-align: center; margin-bottom: 20px;">
-                <img src="logo_oligar_2.jpg" style="width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px; border: 2px solid #8d6e63;">
-                <h2 style="margin: 0; color: #5d4037; letter-spacing: 1px;">OLIGAR CROCHET</h2>
-                <i style="color: #8d6e63; font-size: 13px;">"Creando con amor"</i>
-                <p style="margin: 5px 0; font-size: 12px; color: #333;">Managua, Nicaragua | Cel: 7841 1119</p>
+            <div style="display: flex; align-items: center; margin-bottom: 20px;">
+                <div style="flex: 0 0 100px;">
+                    <img src="logo_oligar.png" style="width: 100px; height: auto;">
+                </div>
+                <div style="flex: 1; text-align: center; padding-right: 100px;"> <h1 style="margin: 0; color: #5d4037; letter-spacing: 2px; font-size: 24px;">OLIGAR CROCHET</h1>
+                    <i style="color: #8d6e63; font-size: 14px;">"Creando con amor"</i>
+                    <p style="margin: 5px 0 0; font-size: 13px; color: #333;">
+                        Managua, Nicaragua | Celular: 7841 1119<br>
+                        oligar.crochet@gmail.com
+                    </p>
+                </div>
             </div>
 
             <hr style="border: none; border-top: 2px solid #8d6e63; margin-bottom: 15px;">
 
             <p><strong>Factura N°:</strong> ${d.Factura_ID} <span style="float:right;"><strong>Fecha:</strong> ${formatFechaDDMMYYYY(excelSerialToDate(d.Fecha))}</span></p>
-            <p style="border-left: 3px solid #8d6e63; padding-left: 10px; margin: 20px 0;">
-                <strong>Cliente:</strong> ${d.Cliente}
+            
+            <p style="margin: 20px 0;">
+                <span style="border-left: 3px solid #8d6e63; padding-left: 10px;">
+                    <strong>Cliente:</strong> ${d.Cliente}
+                </span>
             </p>
 
             <table style="width:100%; border-collapse:collapse;">
@@ -739,8 +748,8 @@ async function cargarFacturaParaEditar(idFactura) {
         // --- PUNTO 2: Carga de Anticipos ---
         const resA = await fetch(`${graphBaseUrl}/workbook/tables/TAnticipos/range`, { headers: { 'Authorization': `Bearer ${token}` } });
         const dA = await resA.json();
-        // Filtramos anticipos donde la columna 0 coincida con el idFactura
-        const pagos = dA.values.filter(f => f[0] && f[0].toString() === idFactura.toString());
+        // Filtramos anticipos donde la columna 1 coincida con el idFactura
+        const pagos = dA.values.filter(f => f[1] && f[0].toString() === idFactura.toString());
         // ------------------------------------
 
         navegar('registro-ventas');

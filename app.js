@@ -499,10 +499,7 @@ function generarFactura(d) {
                 <img src="logo_oligar_2.jpg" style="width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px; border: 2px solid #8d6e63;">
                 <h2 style="margin: 0; color: #5d4037; letter-spacing: 1px;">OLIGAR CROCHET</h2>
                 <i style="color: #8d6e63; font-size: 13px;">"Creando con amor"</i>
-                <p style="margin: 5px 0; font-size: 12px; color: #333;">
-                    Managua, Nicaragua | Cel: 7841 1119<br>
-                    oligar.crochet@gmail.com
-                </p>
+                <p style="margin: 5px 0; font-size: 12px; color: #333;">Managua, Nicaragua | Cel: 7841 1119</p>
             </div>
 
             <hr style="border: none; border-top: 2px solid #8d6e63; margin-bottom: 15px;">
@@ -727,15 +724,24 @@ async function cargarFacturaParaEditar(idFactura) {
     try {
         const token = await getAuthToken();
         
+        // 1. Cargar datos del encabezado (TFacturas)
         const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
         const dC = await resC.json();
         const fC = dC.values.find(f => f[0] && f[0].toString() === idFactura.toString());
 
         if (!fC) return alert("Factura no encontrada");
 
+        // 2. Cargar detalles de productos (TDetalle)
         const resD = await fetch(`${graphBaseUrl}/workbook/tables/TDetalle/range`, { headers: { 'Authorization': `Bearer ${token}` } });
         const dD = await resD.json();
         const items = dD.values.filter(f => f[0] && f[0].toString() === idFactura.toString());
+
+        // --- PUNTO 2: Carga de Anticipos ---
+        const resA = await fetch(`${graphBaseUrl}/workbook/tables/TAnticipos/range`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const dA = await resA.json();
+        // Filtramos anticipos donde la columna 0 coincida con el idFactura
+        const pagos = dA.values.filter(f => f[0] && f[0].toString() === idFactura.toString());
+        // ------------------------------------
 
         navegar('registro-ventas');
         
@@ -747,29 +753,45 @@ async function cargarFacturaParaEditar(idFactura) {
         // Cambiamos el texto del botón para que el usuario sepa que está actualizando
         form.querySelector('button[type="submit"]').innerText = `Actualizar Factura ${idFactura}`;
 
+        // Llenar campos de encabezado
         document.getElementById('v_cliente').value = fC[2];
         const dObj = excelSerialToDate(fC[1]);
         document.getElementById('v_fecha').value = dObj.toISOString().split('T')[0];
         document.getElementById('v_envio').value = fC[3];
         document.getElementById('v_desc_global').value = fC[4];
 
-        const contenedor = document.getElementById('contenedor-productos');
-        contenedor.innerHTML = '';
-
+        // Llenar productos
+        const contenedorP = document.getElementById('contenedor-productos');
+        contenedorP.innerHTML = '';
         items.forEach(it => {
             agregarFilaProducto();
-            const filas = contenedor.querySelectorAll('.fila-producto');
+            const filas = contenedorP.querySelectorAll('.fila-producto');
             const ultima = filas[filas.length - 1];
             ultima.querySelector('.p_nombre').value = it[1];
             ultima.querySelector('.p_cantidad').value = it[2];
             ultima.querySelector('.p_precio').value = it[3];
             ultima.querySelector('.p_descuento').value = it[4];
-            // Nota: La imagen se tendría que volver a subir si se cambia, 
-            // pero si no se toca el input file, manejaremos la lógica para no perder el fileId.
-        
             ultima.dataset.fileid = it[6] || "sin_foto";
-        
         });
+
+        // --- PUNTO 2: Llenar Anticipos en el formulario ---
+        const contenedorA = document.getElementById('contenedor-anticipos');
+        contenedorA.innerHTML = ''; // Limpiamos anticipos actuales
+        
+        pagos.forEach(pg => {
+            agregarFilaAnticipo();
+            const filasA = contenedorA.querySelectorAll('.fila-anticipo');
+            const ultimaA = filasA[filasA.length - 1];
+            
+            // Asignamos Monto (columna 2), Fecha (columna 1) y Método (columna 3)
+            ultimaA.querySelector('.ant-monto').value = pg[2];
+            
+            const fechaPago = excelSerialToDate(pg[1]);
+            ultimaA.querySelector('.ant-fecha').value = fechaPago.toISOString().split('T')[0];
+            
+            ultimaA.querySelector('.ant-metodo').value = pg[3];
+        });
+        // --------------------------------------------------
 
         document.getElementById('mensaje').innerText = `Editando Factura ${idFactura}`;
     } catch (e) {

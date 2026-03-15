@@ -733,24 +733,33 @@ async function cargarFacturaParaEditar(idFactura) {
     try {
         const token = await getAuthToken();
         
-        // 1. Cargar datos del encabezado (TFacturas)
+        // --- 1. CONSULTA DE CABECERA (TFacturas) ---
         const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
         const dC = await resC.json();
+        // Buscamos la fila de la factura (ID está en la columna 0)
         const fC = dC.values.find(f => f[0] && f[0].toString() === idFactura.toString());
 
         if (!fC) return alert("Factura no encontrada");
 
-        // 2. Cargar detalles de productos (TDetalle)
+        // --- 2. CONSULTA DE DETALLE DE PRODUCTOS (TDetalle) ---
         const resD = await fetch(`${graphBaseUrl}/workbook/tables/TDetalle/range`, { headers: { 'Authorization': `Bearer ${token}` } });
         const dD = await resD.json();
+        // Filtramos las filas de productos (Factura_ID está en la columna 0)
         const items = dD.values.filter(f => f[0] && f[0].toString() === idFactura.toString());
 
-        // --- PUNTO 2: Carga de Anticipos ---
+        // ============================================================
+        // === NUEVO: 3. CONSULTA DE ANTICIPOS (TAnticipos) ===
+        // ============================================================
+        // Pedimos al Excel el rango de la tabla TAnticipos
         const resA = await fetch(`${graphBaseUrl}/workbook/tables/TAnticipos/range`, { headers: { 'Authorization': `Bearer ${token}` } });
         const dA = await resA.json();
-        // Filtramos anticipos donde la columna 1 coincida con el idFactura
-        const pagos = dA.values.filter(f => f[1] && f[1].toString() === idFactura.toString());
-        // ------------------------------------
+        
+        // Basándonos en tu imagen de TAnticipos, las columnas son:
+        // Col 0: Anticipo_ID | Col 1: Factura_ID | Col 2: Cliente_ID | Col 3: Fecha | Col 4: Monto | Col 5: Nota
+        
+        // Filtramos las filas de anticipos donde la Factura_ID (Columna 1) coincida
+        const pagosRegistrados = dA.values.filter(fila => fila[1] && fila[1].toString() === idFactura.toString());
+        // ============================================================
 
         navegar('registro-ventas');
         
@@ -760,51 +769,84 @@ async function cargarFacturaParaEditar(idFactura) {
         form.dataset.idFactura = idFactura; 
         
         // Cambiamos el texto del botón para que el usuario sepa que está actualizando
-        form.querySelector('button[type="submit"]').innerText = `Actualizar Factura ${idFactura}`;
+        if(form.querySelector('button[type="submit"]')) {
+            form.querySelector('button[type="submit"]').innerText = `Actualizar Factura ${idFactura}`;
+        }
 
-        // Llenar campos de encabezado
-        document.getElementById('v_cliente').value = fC[2];
-        const dObj = excelSerialToDate(fC[1]);
-        document.getElementById('v_fecha').value = dObj.toISOString().split('T')[0];
-        document.getElementById('v_envio').value = fC[3];
-        document.getElementById('v_desc_global').value = fC[4];
-
-        // Llenar productos
-        const contenedorP = document.getElementById('contenedor-productos');
-        contenedorP.innerHTML = '';
-        items.forEach(it => {
-            agregarFilaProducto();
-            const filas = contenedorP.querySelectorAll('.fila-producto');
-            const ultima = filas[filas.length - 1];
-            ultima.querySelector('.p_nombre').value = it[1];
-            ultima.querySelector('.p_cantidad').value = it[2];
-            ultima.querySelector('.p_precio').value = it[3];
-            ultima.querySelector('.p_descuento').value = it[4];
-            ultima.dataset.fileid = it[6] || "sin_foto";
-        });
-
-        // --- PUNTO 2: Llenar Anticipos en el formulario ---
-        const contenedorA = document.getElementById('contenedor-anticipos');
-        contenedorA.innerHTML = ''; // Limpiamos anticipos actuales
+        // --- LLENADO DE DATOS DE CABECERA EN EL FORMULARIO ---
+        // fC[2]=Cliente, fC[1]=Fecha (Serial Excel), fC[3]=Envío, fC[4]=DescGlobal
+        const inputCliente = document.getElementById('v_cliente');
+        if(inputCliente) inputCliente.value = fC[2];
         
-        pagos.forEach(pg => {
-            agregarFilaAnticipo();
-            const filasA = contenedorA.querySelectorAll('.fila-anticipo');
-            const ultimaA = filasA[filasA.length - 1];
-            
-            // Asignamos Monto (columna 2), Fecha (columna 1) y Método (columna 3)
-            ultimaA.querySelector('.ant-monto').value = pg[2];
-            
-            const fechaPago = excelSerialToDate(pg[1]);
-            ultimaA.querySelector('.ant-fecha').value = fechaPago.toISOString().split('T')[0];
-            
-            ultimaA.querySelector('.ant-metodo').value = pg[3];
-        });
-        // --------------------------------------------------
+        const dObj = excelSerialToDate(fC[1]);
+        const inputFecha = document.getElementById('v_fecha');
+        if(inputFecha) inputFecha.value = dObj.toISOString().split('T')[0];
+        
+        const inputEnvio = document.getElementById('v_envio');
+        if(inputEnvio) inputEnvio.value = fC[3];
+        
+        const inputDescG = document.getElementById('v_desc_global');
+        if(inputDescG) inputDescG.value = fC[4];
+
+        // --- LLENADO DE PRODUCTOS EN EL FORMULARIO ---
+        const contenedorProductos = document.getElementById('contenedor-productos');
+        if(contenedorProductos) {
+            contenedorProductos.innerHTML = ''; // Limpiar productos base
+            items.forEach(it => {
+                // it[1]=Nombre, it[2]=Cant, it[3]=Precio, it[4]=Desc, it[6]=FileIdImg
+                agregarFilaProducto();
+                const filasP = contenedorProductos.querySelectorAll('.fila-producto');
+                const ultimaP = filasP[filasP.length - 1];
+                
+                if(ultimaP.querySelector('.p_nombre')) ultimaP.querySelector('.p_nombre').value = it[1];
+                if(ultimaP.querySelector('.p_cantidad')) ultimaP.querySelector('.p_cantidad').value = it[2];
+                if(ultimaP.querySelector('.p_precio')) ultimaP.querySelector('.p_precio').value = it[3];
+                if(ultimaP.querySelector('.p_descuento')) ultimaP.querySelector('.p_descuento').value = it[4];
+                
+                // Nota: La imagen se tendría que volver a subir si se cambia, 
+                // pero si no se toca el input file, manejaremos la lógica para no perder el fileId.
+                ultimaP.dataset.fileid = it[6] || "sin_foto";
+            });
+        }
+
+        // ============================================================
+        // === NUEVO: LLENADO DE ANTICIPOS EN EL FORMULARIO ===
+        // ============================================================
+        const contenedorAnticipos = document.getElementById('contenedor-anticipos');
+        if (contenedorAnticipos) {
+            contenedorAnticipos.innerHTML = ''; // Limpiar anticipos base
+
+            pagosRegistrados.forEach(pago => {
+                // Mapeo según tu imagen TAnticipos:
+                // Col 3: Fecha | Col 4: Monto | Col 5: Nota
+
+                // Llama a tu función que crea la fila visual
+                agregarFilaAnticipo(); 
+                
+                const filasA = contenedorAnticipos.querySelectorAll('.fila-anticipo');
+                const ultimaA = filasA[filasA.length - 1];
+                
+                // Llenar Fecha (Columna 3): Convertir Serial Excel a YYYY-MM-DD
+                const inputFechaA = ultimaA.querySelector('.a_fecha');
+                if(inputFechaA) {
+                    inputFechaA.value = excelSerialToDate(pago[3]).toISOString().split('T')[0];
+                }
+                
+                // Llenar Monto (Columna 4)
+                const inputMontoA = ultimaA.querySelector('.a_monto');
+                if(inputMontoA) inputMontoA.value = pago[4];
+                
+                // Llenar Nota (Columna 5)
+                const inputNotaA = ultimaA.querySelector('.a_comentario');
+                if(inputNotaA) inputNotaA.value = pago[5];
+            });
+        }
+        // ============================================================
 
         document.getElementById('mensaje').innerText = `Editando Factura ${idFactura}`;
     } catch (e) {
-        alert("Error: " + e.message);
+        console.error("Error en cargarFacturaParaEditar:", e);
+        alert("Error técnico al cargar los datos: " + e.message);
     }
 }
 

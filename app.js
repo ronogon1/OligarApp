@@ -159,39 +159,105 @@ async function escribirFilas(nombreTabla, filas) {
     return resp.ok;
 }
 
-async function eliminarRegistrosPrevios(idFactura) {
+
+function agregarFilaAnticipo(datos = null) {
+    const contenedor = document.getElementById('contenedor-anticipos');
+    const div = document.createElement('div');
+    div.className = 'fila-anticipo'; // Clase importante para el onsubmit
+    
+    const hoy = new Date().toISOString().split('T')[0];
+
+    // Si pasamos datos (para edición), los usamos. Si no, vacíos.
+    const fecha = datos ? datos.fecha : hoy;
+    const monto = datos ? datos.monto : "";
+    const nota = datos ? datos.nota : "";
+
+    div.innerHTML = `
+        <div style="display:grid; grid-template-columns: 1.2fr 1fr 2fr 40px; gap:8px; align-items: center; margin-bottom:10px; background: white; padding: 8px; border-radius: 5px; border: 1px solid #efebe9;">
+            <input type="date" class="a_fecha" value="${fecha}" required style="width:100%">
+            <input type="number" class="a_monto" placeholder="Monto C$" step="0.01" value="${monto}" required style="width:100%">
+            <input type="text" class="a_comentario" placeholder="Nota (Efectivo, Transf...)" value="${nota}" style="width:100%">
+            
+            <button type="button" onclick="this.parentElement.parentElement.remove()" 
+                style="color:red; background:none; border:none; cursor:pointer; font-weight:bold; font-size:1.2em;">✕</button>
+        </div>
+    `;
+    contenedor.appendChild(div);
+}
+
+
+async function eliminarRegistrosPrevios(facturaID) {
     const token = await getAuthToken();
-    const tablas = ["TFacturas", "TDetalle"];
+    const tablas = ["TFacturas", "TDetalle", "TAnticipos"];
 
     for (const nombreTabla of tablas) {
-        // 1. Obtener todos los datos de la tabla para buscar el ID
-        const urlRange = `${graphBaseUrl}/workbook/tables/${nombreTabla}/range`;
-        const resp = await fetch(urlRange, { headers: { 'Authorization': `Bearer ${token}` } });
-        const data = await resp.json();
+        // 1. Obtener el rango de la tabla
+        const res = await fetch(`${graphBaseUrl}/workbook/tables/${nombreTabla}/range`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
 
-        if (data.values && data.values.length > 0) {
-            // Buscamos los índices de las filas que coinciden con el ID
-            // El índice de la API es relativo al cuerpo de la tabla (sin encabezado), por eso restamos 1 si es necesario
-            // Pero lo más fácil es usar el endpoint de 'rows' directamente.
-            // Filtramos las filas que coinciden (empezando desde el final para no mover índices)
-            for (let i = data.values.length - 1; i >= 1; i--) {
-                if (data.values[i][0] && data.values[i][0].toString() === idFactura.toString()) {
-                    const filaIndex = i - 1; // El índice en 'rows' empieza en 0 para la primera fila de datos
-                    const urlDelete = `${graphBaseUrl}/workbook/tables/${nombreTabla}/rows/itemAt(index=${filaIndex})`;
-                    
-                    await fetch(urlDelete, {
-                        method: 'DELETE',
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                }
-            }
+        if (!data.values || data.values.length <= 1) continue;
+
+        // 2. Identificar qué filas coinciden con la facturaID
+        // Factura_ID siempre es el índice 0 en TFacturas y TDetalle
+        // En TAnticipos, según tu imagen, Factura_ID es el índice 1
+        const indiceColumnaId = (nombreTabla === "TAnticipos") ? 1 : 0;
+
+        // Filtramos los índices de las filas a eliminar (al revés para no alterar el orden al borrar)
+        const filasAEliminar = data.values
+            .map((fila, index) => ({ id: fila[indiceColumnaId], index: index - 1 })) // -1 por el encabezado
+            .filter(item => item.id && item.id.toString() === facturaID.toString())
+            .reverse();
+
+        // 3. Borrar cada fila encontrada
+        for (const fila of filasAEliminar) {
+            await fetch(`${graphBaseUrl}/workbook/tables/${nombreTabla}/rows/itemAt(index=${fila.index})`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
         }
     }
 }
 
 
+async function asegurarRegistroCliente(nombreCliente) {
+    if (!nombreCliente) return;
+
+    const token = await getAuthToken();
+    try {
+        // 1. Consultar la tabla TClientes
+        const res = await fetch(`${graphBaseUrl}/workbook/tables/TClientes/range`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+
+        // 2. Verificar si el nombre ya existe (Columna B es índice 1)
+        const existe = data.values && data.values.some(fila => 
+            fila[1] && fila[1].toString().toLowerCase() === nombreCliente.toLowerCase()
+        );
+
+        if (!existe) {
+            console.log(`Cliente nuevo detectado: ${nombreCliente}. Registrando...`);
+            
+            // Generar un ID temporal para el cliente (puedes ajustarlo luego)
+            const nuevoId = `C-${Date.now().toString().slice(-6)}`;
+            
+            // Estructura según tu imagen: Cliente_ID, Nombre, Teléfono, Dirección1, Dirección2, Dirección3, Nota
+            // Los campos adicionales van vacíos por ahora
+            const nuevaFila = [nuevoId, nombreCliente, "", "", "", "", "Registrado desde factura"];
+
+            await escribirFilas("TClientes", [nuevaFila]);
+        }
+    } catch (error) {
+        console.error("Error al validar/registrar cliente:", error);
+        // No bloqueamos la venta si falla el registro del cliente, solo avisamos en consola
+    }
+}
+
+
 // ==========================================
-// 5. PROCESO DE VENTA (CON FILEID DE IMAGEN)
+// 5. PROCESO DE VENTA (ACTUALIZADO)
 // ==========================================
 document.getElementById('formVentas').onsubmit = async (e) => {
     e.preventDefault();
@@ -199,21 +265,23 @@ document.getElementById('formVentas').onsubmit = async (e) => {
     const form = e.target;
     btn.disabled = true;
     
-    // DETECTAR SI ES EDICIÓN O NUEVA
     const esEdicion = form.dataset.modo === "edit";
     let facturaID = form.dataset.idFactura;
+    const clienteNombre = document.getElementById('v_cliente').value; 
     
     document.getElementById('mensaje').innerText = esEdicion ? "Actualizando factura..." : "Guardando venta...";
 
     try {
         const token = await getAuthToken();
 
+        // --- PASO 0. GESTIÓN DE CLIENTE ---
+        await asegurarRegistroCliente(clienteNombre);
+
         if (esEdicion) {
-            // PASO CRÍTICO: Borrar lo viejo antes de escribir lo nuevo con el mismo ID
+            // PASO CRÍTICO: Borra de TFacturas, TDetalle y TAnticipos
             await eliminarRegistrosPrevios(facturaID);
         } else {
-            // Lógica normal para factura NUEVA 
-            // 1. Obtener correlativo
+            // Generar ID Correlativo para Factura NUEVA
             const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { 
                 headers: { 'Authorization': `Bearer ${token}` } 
             });
@@ -226,7 +294,7 @@ document.getElementById('formVentas').onsubmit = async (e) => {
             facturaID = `${new Date().getFullYear()}${proxId.toString().padStart(4, '0')}`;
         }
 
-        // 2. Procesar productos
+        // --- 1. PROCESAR PRODUCTOS (TDetalle) ---
         const filasDetalle = [];
         let sumaSubtotales = 0;
 
@@ -237,70 +305,83 @@ document.getElementById('formVentas').onsubmit = async (e) => {
             const desc = parseFloat(fila.querySelector('.p_descuento').value) || 0;
             const subtotal = (cant * precio) - desc;
 
-            const archivo = fila.querySelector('.p_imagen')?.files[0];
-            // Si no hay archivo nuevo, intentamos mantener el que ya tenía la fila
             let fileIdImg = fila.dataset.fileid || "sin_foto";
+            const archivo = fila.querySelector('.p_imagen')?.files[0];
 
-            // --- SUBIR IMAGEN A ONEDRIVE Y OBTENER FILEID ---
             if (archivo) {
                 const nombreImg = `${facturaID}_${nombre.replace(/\s+/g, '_')}.jpg`;
-
-                const uploadUrl = 
-                    `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${productosFolderId}:/${nombreImg}:/content`;
-
+                const uploadUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${productosFolderId}:/${nombreImg}:/content`;
                 const respUpload = await fetch(uploadUrl, {
                     method: 'PUT',
                     headers: { 'Authorization': `Bearer ${token}` },
                     body: archivo
                 });
-
                 const dataUpload = await respUpload.json();
-                fileIdImg = dataUpload.id; // ← EL FILEID REAL
+                fileIdImg = dataUpload.id;
             }
 
             filasDetalle.push([facturaID, nombre, cant, precio, desc, subtotal, fileIdImg]);
-
             sumaSubtotales += subtotal;
         }
 
+        // --- 2. PROCESAR ANTICIPOS (TAnticipos) ---
+        const filasAnticipos = [];
+        let totalPagado = 0;
+        const domAnticipos = document.querySelectorAll('.fila-anticipo');
+
+        domAnticipos.forEach((fila, index) => {
+            const fechaA = fila.querySelector('.a_fecha').value;
+            const montoA = parseFloat(fila.querySelector('.a_monto').value) || 0;
+            const notaA = fila.querySelector('.a_comentario').value;
+            
+            // ID de Anticipo único
+            const anticipoID = `ANT-${facturaID}-${index + 1}`;
+            
+            // Estructura: Anticipo_ID, Factura_ID, Cliente_ID (temporalmente nombre), Fecha, Monto_Recibido, Nota
+            filasAnticipos.push([anticipoID, facturaID, clienteNombre, fechaA, montoA, notaA]);
+            totalPagado += montoA;
+        });
+
+        // --- 3. CÁLCULOS FINALES ---
         const envio = parseFloat(document.getElementById('v_envio').value) || 0;
         const descG = parseFloat(document.getElementById('v_desc_global').value) || 0;
         const totalF = sumaSubtotales + envio - descG;
 
-        // 3. Guardar en Excel
+        // --- 4. GUARDAR EN EXCEL (Respetando el orden de tus tablas) ---
+        
+        // A. Guardar Detalle de Productos
         await escribirFilas("TDetalle", filasDetalle);
+        
+        // B. Guardar Detalle de Anticipos (Si existen)
+        if (filasAnticipos.length > 0) {
+            await escribirFilas("TAnticipos", filasAnticipos);
+        }
+
+        // C. Guardar Cabecera de Factura
+        // Campos: ID, Fecha, Cliente, Envío, DescG, Total, Estado, Pagado
         await escribirFilas("TFacturas", [
-            [facturaID, document.getElementById('v_fecha').value, document.getElementById('v_cliente').value, envio, descG, totalF, "Activo"]
+            [facturaID, document.getElementById('v_fecha').value, clienteNombre, envio, descG, totalF, "Activo", totalPagado]
         ]);
 
-        // 4. Limpieza y Transición
-        e.target.reset();
-        document.getElementById('contenedor-productos').innerHTML = '';
+        // --- 5. LIMPIEZA Y FINALIZACIÓN ---
+        limpiarYRegresar(); // Esta función ya resetea el formulario y dataset
+        
         document.getElementById('mensaje').innerText = "Procesando...";
         
-        // Esperamos un poco para que Excel procese los datos
         setTimeout(async () => {
             await ImprimirFactura(facturaID); 
-            await leerExcel(); // Refresca las tablas de consulta
-            document.getElementById('mensaje').innerText = "Listo."; // Se ejecuta DESPUÉS de mostrar la factura
+            await leerExcel();
+            document.getElementById('mensaje').innerText = "Listo.";
         }, 1200);
-
-        // 1. Limpiamos los datos de edición para que la próxima venta no herede el ID viejo
-        form.dataset.modo = "";
-        form.dataset.idFactura = "";
-        form.querySelector('button[type="submit"]').innerText = "Guardar Venta e Imprimir Factura";
-
-        // 2. Cerramos la cortina y volvemos al menú
-        navegar('menu');
 
     } catch (err) {
         alert("Error al guardar: " + err.message);
         document.getElementById('mensaje').innerText = "Error en el registro.";
     } finally {
-        // ESTA ES LA ÚLTIMA SECCIÓN: Pase lo que pase, rehabilitamos el botón
         btn.disabled = false;
     }
 };
+
 
 // ==========================================
 // 6. RENDERIZADO Y CONSULTAS
@@ -459,7 +540,6 @@ function generarFactura(d) {
     document.getElementById('detalle-factura').innerHTML = contenido;
     document.getElementById('modal-factura').style.display = 'block';
 }
-
 
 
 async function previsualizarFactura() {
@@ -709,9 +789,33 @@ async function cambiarEstadoFactura(id, nuevoEstado) {
 }
 
 
-function cerrarFacturaYSalir() {
-    document.getElementById('modal-factura').style.display = 'none'; // Acción 1: Esconder
-    navegar('menu');                                                 // Acción 2: Navegar
+function limpiarYRegresar() {
+    const form = document.getElementById('formVentas');
+    
+    // 1. Limpieza de datos y estados
+    form.reset();
+    form.dataset.modo = "";
+    form.dataset.idFactura = "";
+    
+    // Mantenemos tu validación del botón para que vuelva al estado original
+    if(form.querySelector('button[type="submit"]')) {
+        form.querySelector('button[type="submit"]').innerText = "Guardar Venta e Imprimir Factura";
+    }
+
+    // 2. Limpieza de filas dinámicas (Agregamos el nuevo contenedor)
+    document.getElementById('contenedor-productos').innerHTML = '';
+    document.getElementById('contenedor-anticipos').innerHTML = '';
+
+    // Agregamos una fila de producto base para que no quede el espacio vacío
+    // al volver a entrar a una nueva venta.
+    agregarFilaProducto();
+
+    // 3. Cerrar modales si estuvieran abiertos
+    const modal = document.getElementById('modal-factura');
+    if (modal) modal.style.display = 'none';
+
+    // 4. Volver al origen
+    navegar('menu');
 }
 
 

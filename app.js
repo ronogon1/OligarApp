@@ -496,10 +496,13 @@ function generarFactura(d) {
         <div style="color:#444; font-size: 14px; font-family: sans-serif;">
             
             <div style="text-align: center; margin-bottom: 20px;">
-                <img src="TU_LOGO_EN_BASE64_O_URL" style="width: 80px; margin-bottom: 10px;">
+                <img src="logo_oligar_2.jpg" style="width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px; border: 2px solid #8d6e63;">
                 <h2 style="margin: 0; color: #5d4037; letter-spacing: 1px;">OLIGAR CROCHET</h2>
                 <i style="color: #8d6e63; font-size: 13px;">"Creando con amor"</i>
-                <p style="margin: 5px 0; font-size: 12px;">Managua, Nicaragua | Cel: 7841 1119</p>
+                <p style="margin: 5px 0; font-size: 12px; color: #333;">
+                    Managua, Nicaragua | Cel: 7841 1119<br>
+                    oligar.crochet@gmail.com
+                </p>
             </div>
 
             <hr style="border: none; border-top: 2px solid #8d6e63; margin-bottom: 15px;">

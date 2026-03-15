@@ -116,6 +116,60 @@ function agregarFilaProducto() {
     contenedor.appendChild(div);
 }
 
+
+// Variable global para los clientes (se debe llenar al iniciar la app o entrar a ventas)
+let listaClientesGlobal = []; 
+
+async function cargarListaClientes() {
+    const token = await getAuthToken();
+    const res = await fetch(`${graphBaseUrl}/workbook/tables/TClientes/range`, { 
+        headers: { 'Authorization': `Bearer ${token}` } 
+    });
+    const data = await res.json();
+    // Guardamos nombre (índice 1) y ID (índice 0) según tu tabla
+    listaClientesGlobal = data.values.slice(1).map(f => ({ id: f[0], nombre: f[1] }));
+}
+
+// Lógica del autocompletado
+document.getElementById('v_cliente').addEventListener('input', function(e) {
+    const busqueda = e.target.value.toLowerCase();
+    const contenedor = document.getElementById('sugerencias-clientes');
+    
+    if (busqueda.length < 2) {
+        contenedor.style.display = 'none';
+        return;
+    }
+
+    // Filtrar clientes que hagan match
+    const matches = listaClientesGlobal.filter(c => 
+        c.nombre.toLowerCase().includes(busqueda)
+    );
+
+    if (matches.length > 0) {
+        contenedor.innerHTML = matches.map(c => `
+            <div class="sugerencia-item" onclick="seleccionarCliente('${c.nombre}')">
+                ${c.nombre}
+            </div>
+        `).join('');
+        contenedor.style.display = 'block';
+    } else {
+        contenedor.style.display = 'none';
+    }
+});
+
+function seleccionarCliente(nombre) {
+    document.getElementById('v_cliente').value = nombre;
+    document.getElementById('sugerencias-clientes').style.display = 'none';
+}
+
+// Cerrar lista si se hace click fuera
+document.addEventListener('click', (e) => {
+    if (e.target.id !== 'v_cliente') {
+        document.getElementById('sugerencias-clientes').style.display = 'none';
+    }
+});
+
+
 // ==========================================
 // 4. LÓGICA DE DATOS (READ/WRITE/DELETE)
 // ==========================================
@@ -497,11 +551,11 @@ function generarFactura(d) {
             
             <div style="display: flex; align-items: center; margin-bottom: 20px;">
                 <div style="flex: 0 0 100px;">
-                    <img src="logo_oligar.png" style="width: 100px; height: auto;">
+                    <img src="logo_oligar.png" style="width: 120px; height: auto;">
                 </div>
                 <div style="flex: 1; text-align: center; padding-right: 100px;"> <h1 style="margin: 0; color: #5d4037; letter-spacing: 2px; font-size: 24px;">OLIGAR CROCHET</h1>
-                    <i style="color: #8d6e63; font-size: 14px;">"Creando con amor"</i>
-                    <p style="margin: 5px 0 0; font-size: 13px; color: #333;">
+                    <i style="color: #8d6e63; font-size: 16px;">"Creando con amor"</i>
+                    <p style="margin: 5px 0 0; font-size: 15px; color: #333;">
                         Managua, Nicaragua | Celular: 7841 1119<br>
                         oligar.crochet@gmail.com
                     </p>

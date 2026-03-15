@@ -55,7 +55,8 @@
         <div id="tabla-facturas" class="tarjeta"></div>
         <div id="tabla-detalle" class="tarjeta"></div>
         <div id="tabla-clientes" class="tarjeta"></div>
-        <div id="tabla-anticipos" class="tarjeta"></div> </div>
+        <div id="tabla-anticipos" class="tarjeta"></div> 
+    </div>
 
     <div id="seccion-registro-ventas" style="display:none; max-width: 600px; margin: auto;">
         <button onclick="limpiarYRegresar()" style="margin-bottom: 20px;">← Volver</button>
@@ -64,7 +65,12 @@
         <form id="formVentas">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
                 <input type="hidden" id="v_cliente_id"> 
-                <input type="text" id="v_cliente" placeholder="Nombre del Cliente" required>
+                
+                <div style="position: relative;">
+                    <input type="text" id="v_cliente" placeholder="Nombre del Cliente" required autocomplete="off" style="width: 100%;">
+                    <div id="sugerencias-clientes" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; z-index: 1000; max-height: 200px; overflow-y: auto; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 0 0 4px 4px;"></div>
+                </div>
+
                 <input type="date" id="v_fecha" required>
             </div>
 
@@ -157,5 +163,20 @@
 
     <p id="mensaje">Estado: Desconectado</p>
     <script src="app.js"></script>
+
+    <style>
+        .sugerencia-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            color: #333;
+            font-size: 0.9em;
+        }
+        .sugerencia-item:hover {
+            background-color: #f5f5f5;
+            color: #5d4037;
+        }
+    </style>
+
 </body>
 </html>

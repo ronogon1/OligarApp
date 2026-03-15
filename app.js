@@ -9,13 +9,13 @@ const msalConfig = {
     }
 };
 
-const driveId = "56163DD91D08F884"
+const driveId = "56163DD91D08F884";
 const fileId = "56163DD91D08F884!s67e52d563b4b4c59911dbd743552ac7d";
 const graphBaseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
 const productosFolderId = "56163DD91D08F884!saaf6f36dee0d406092c3d80f859b3981";
 const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-let listaClientesGlobal = []; // Aquí guardaremos los nombres para buscar rápido
+let listaClientesGlobal = []; // Memoria para el buscador rápido
 
 // ==========================================
 // 2. AUTENTICACIÓN
@@ -35,7 +35,21 @@ async function getAuthToken() {
 document.getElementById('loginBtn').onclick = async () => {
     try {
         await msalInstance.loginPopup({ scopes: ["user.read", "Files.ReadWrite"] });
+        document.getElementById('mensaje').innerText = "Conectado. Cargando datos...";
+        
+        // ORDEN CRÍTICO: Primero cargar clientes para que el buscador funcione
+        await actualizarMemoriaClientes();
+        await leerExcel();
+        
+        navegar('menu');
+    } catch (err) { alert("Error de Login: " + err.message); }
+};
+
+document.getElementById('loginBtn').onclick = async () => {
+    try {
+        await msalInstance.loginPopup({ scopes: ["user.read", "Files.ReadWrite"] });
         document.getElementById('mensaje').innerText = "Conectado correctamente.";
+        await actualizarMemoriaClientes();
         await leerExcel();
         navegar('menu');
     } catch (err) { alert("Error de Login: " + err.message); }
@@ -45,29 +59,16 @@ document.getElementById('loginBtn').onclick = async () => {
 // 3. NAVEGACIÓN Y UI
 // ==========================================
 function navegar(pantalla) {
-    // 1. Definimos todas las secciones existentes en el HTML
-    const secciones = [
-        'seccion-login', 
-        'seccion-menu', 
-        'seccion-consulta-tablas', 
-        'seccion-registro-ventas', 
-        'seccion-gestion-facturas'
-    ];
-
-    // 2. Ocultamos todas las secciones antes de mostrar la elegida
+    const secciones = ['seccion-login', 'seccion-menu', 'seccion-consulta-tablas', 'seccion-registro-ventas', 'seccion-gestion-facturas'];
     secciones.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
     
-    // 3. Construimos el ID de destino y lo mostramos
     const destino = document.getElementById('seccion-' + pantalla);
     if (destino) {
         destino.style.display = 'block';
 
-        // --- LÓGICA ESPECÍFICA POR PANTALLA ---
-
-        // A. Si vamos al formulario de ventas
         if (pantalla === 'registro-ventas') {
             const form = document.getElementById('formVentas');
             if (form.dataset.modo !== "edit") {
@@ -75,19 +76,10 @@ function navegar(pantalla) {
                 agregarFilaProducto();
             }
         }
-
-        // B. Si vamos a la consulta de tablas, refrescamos datos automáticamente
-        if (pantalla === 'consulta-tablas') {
-            refrescarTablasManual(); 
-        }
-
-        // C. INTEGRACIÓN NUEVA: Si vamos a Gestión de Facturas
+        if (pantalla === 'consulta-tablas') { refrescarTablasManual(); }
         if (pantalla === 'gestion-facturas') {
-            // Ocultamos el panel de previsualización para que aparezca limpio
             const panel = document.getElementById('panel-previsualizacion');
             if (panel) panel.style.display = 'none';
-            
-            // Limpiamos el input de búsqueda
             const inputBusqueda = document.getElementById('busqueda_factura');
             if (inputBusqueda) inputBusqueda.value = '';
         }
@@ -98,18 +90,16 @@ function agregarFilaProducto() {
     const contenedor = document.getElementById('contenedor-productos');
     const div = document.createElement('div');
     div.className = 'fila-producto';
-    div.dataset.fileid = "sin_foto"; // Guardamos el fileId de la imagen aquí
+    div.dataset.fileid = "sin_foto";
     
     div.innerHTML = `
         <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 30px; gap:8px; align-items: center; margin-bottom:10px;">
             <input type="text" class="p_nombre" placeholder="Producto" required>
             <input type="number" class="p_cantidad" placeholder="Cantidad" min="1" required>
             <input type="number" class="p_precio" placeholder="Precio" required>
-            
             <button type="button" onclick="this.parentElement.parentElement.remove()" 
                 style="color:red; background:none; border:none; cursor:pointer; font-weight:bold; font-size:1.5em; padding:0;">✕</button>
         </div>
-
         <div style="display:flex; gap:10px; align-items: center;">
             <input type="number" class="p_descuento" placeholder="Descuento en C$" style="flex:1;">
             <input type="file" class="p_imagen" accept="image/*" style="flex:1.5; font-size: 0.8em;">
@@ -119,34 +109,39 @@ function agregarFilaProducto() {
 }
 
 
-async function cargarListaClientes() {
-    const token = await getAuthToken();
-    const res = await fetch(`${graphBaseUrl}/workbook/tables/TClientes/range`, { 
-        headers: { 'Authorization': `Bearer ${token}` } 
-    });
-    const data = await res.json();
-    // Guardamos nombre (índice 1) y ID (índice 0) según tu tabla
-    listaClientesGlobal = data.values.slice(1).map(f => ({ id: f[0], nombre: f[1] }));
+// --- LÓGICA DEL BUSCADOR DE CLIENTES ---
+async function actualizarMemoriaClientes() {
+    try {
+        const token = await getAuthToken();
+        const res = await fetch(`${graphBaseUrl}/workbook/tables/TClientes/range`, { 
+            headers: { 'Authorization': `Bearer ${token}` } 
+        });
+        const data = await res.json();
+        if (data.values) {
+            // Guardamos objetos {id, nombre} para mayor precisión
+            listaClientesGlobal = data.values.slice(1).map(f => ({ id: f[0], nombre: f[1] }));
+            console.log("Buscador: Clientes cargados", listaClientesGlobal.length);
+        }
+    } catch (e) { console.error("Error cargando clientes:", e); }
 }
 
-// Lógica del autocompletado
+
 document.getElementById('v_cliente').addEventListener('input', function(e) {
     const busqueda = e.target.value.toLowerCase();
     const contenedor = document.getElementById('sugerencias-clientes');
     
-    if (busqueda.length < 2) {
+    if (busqueda.length < 1) {
         contenedor.style.display = 'none';
         return;
     }
 
-    // Filtrar clientes que hagan match
     const matches = listaClientesGlobal.filter(c => 
-        c.nombre.toLowerCase().includes(busqueda)
+        c.nombre && c.nombre.toString().toLowerCase().includes(busqueda)
     );
 
     if (matches.length > 0) {
         contenedor.innerHTML = matches.map(c => `
-            <div class="sugerencia-item" onclick="seleccionarCliente('${c.nombre}')">
+            <div class="sugerencia-item" onclick="seleccionarClienteSug('${c.nombre}')">
                 ${c.nombre}
             </div>
         `).join('');
@@ -156,12 +151,12 @@ document.getElementById('v_cliente').addEventListener('input', function(e) {
     }
 });
 
-function seleccionarCliente(nombre) {
+
+function seleccionarClienteSug(nombre) {
     document.getElementById('v_cliente').value = nombre;
     document.getElementById('sugerencias-clientes').style.display = 'none';
 }
 
-// Cerrar lista si se hace click fuera
 document.addEventListener('click', (e) => {
     if (e.target.id !== 'v_cliente') {
         document.getElementById('sugerencias-clientes').style.display = 'none';
@@ -172,11 +167,14 @@ document.addEventListener('click', (e) => {
 // ==========================================
 // 4. LÓGICA DE DATOS (READ/WRITE/DELETE)
 // ==========================================
+
+/**
+ * Lee los datos de las tablas principales de Excel.
+ */
 async function leerExcel() {
-    
     const tablas = ["TFacturas", "TDetalle"]; 
     const token = await getAuthToken();
-    const resultados = {}; // Aquí guardaremos los datos de ambas tablas
+    const resultados = {}; // Aquí guardaremos los datos de las tablas
 
     for (const nombre of tablas) {
         try {
@@ -200,7 +198,9 @@ async function leerExcel() {
     return resultados; // Devolvemos el objeto con toda la información
 }
 
-
+/**
+ * Carga los nombres de clientes en una variable global para el buscador rápido.
+ */
 async function actualizarMemoriaClientes() {
     try {
         const token = await getAuthToken();
@@ -209,51 +209,22 @@ async function actualizarMemoriaClientes() {
         });
         const data = await res.json();
         
-        // Convertimos las filas de Excel en una lista simple de nombres
-        // Saltamos la primera fila (encabezados) con .slice(1)
-        listaClientesGlobal = data.values.slice(1).map(fila => fila[1]); 
-        console.log("Clientes cargados:", listaClientesGlobal.length);
+        if (data.values) {
+            // Guardamos Cliente_ID (índice 0) y Nombre (índice 1)
+            listaClientesGlobal = data.values.slice(1).map(fila => ({
+                id: fila[0],
+                nombre: fila[1]
+            }));
+            console.log("Memoria de clientes lista:", listaClientesGlobal.length);
+        }
     } catch (e) {
-        console.error("Error cargando clientes para el buscador:", e);
+        console.error("Error cargando clientes:", e);
     }
 }
 
-
-document.getElementById('v_cliente').addEventListener('input', function(e) {
-    const escritura = e.target.value.toLowerCase();
-    const contenedorSugerencias = document.getElementById('sugerencias-clientes');
-
-    // Si no hay nada escrito o es muy poco, ocultar menú
-    if (escritura.length < 1) {
-        contenedorSugerencias.style.display = 'none';
-        return;
-    }
-
-    // Filtrar clientes que contengan lo que escribiste (como "ROGER")
-    const coincidencias = listaClientesGlobal.filter(nombre => 
-        nombre && nombre.toLowerCase().includes(escritura)
-    );
-
-    if (coincidencias.length > 0) {
-        // Generar los cuadritos de cada cliente encontrado
-        contenedorSugerencias.innerHTML = coincidencias.map(nombre => `
-            <div class="sugerencia-item" onclick="seleccionarClienteSug('${nombre}')">
-                ${nombre}
-            </div>
-        `).join('');
-        contenedorSugerencias.style.display = 'block';
-    } else {
-        contenedorSugerencias.style.display = 'none';
-    }
-});
-
-// Función para cuando haces click en un nombre de la lista
-function seleccionarClienteSug(nombreSeleccionado) {
-    document.getElementById('v_cliente').value = nombreSeleccionado;
-    document.getElementById('sugerencias-clientes').style.display = 'none';
-}
-
-
+/**
+ * Escribe nuevas filas en cualquier tabla de Excel.
+ */
 async function escribirFilas(nombreTabla, filas) {
     const token = await getAuthToken();
     const url = `${graphBaseUrl}/workbook/tables/${nombreTabla}/rows`;
@@ -265,7 +236,9 @@ async function escribirFilas(nombreTabla, filas) {
     return resp.ok;
 }
 
-
+/**
+ * Agrega visualmente una fila de anticipo en el formulario de ventas.
+ */
 function agregarFilaAnticipo(datos = null) {
     const contenedor = document.getElementById('contenedor-anticipos');
     const div = document.createElement('div');
@@ -291,7 +264,9 @@ function agregarFilaAnticipo(datos = null) {
     contenedor.appendChild(div);
 }
 
-
+/**
+ * Elimina los registros de una factura en TFacturas, TDetalle y TAnticipos antes de sobreescribir (Editar).
+ */
 async function eliminarRegistrosPrevios(facturaID) {
     const token = await getAuthToken();
     const tablas = ["TFacturas", "TDetalle", "TAnticipos"];
@@ -306,13 +281,12 @@ async function eliminarRegistrosPrevios(facturaID) {
         if (!data.values || data.values.length <= 1) continue;
 
         // 2. Identificar qué filas coinciden con la facturaID
-        // Factura_ID siempre es el índice 0 en TFacturas y TDetalle
-        // En TAnticipos, según tu imagen, Factura_ID es el índice 1
+        // Factura_ID: Índice 0 en TFacturas/TDetalle, Índice 1 en TAnticipos
         const indiceColumnaId = (nombreTabla === "TAnticipos") ? 1 : 0;
 
-        // Filtramos los índices de las filas a eliminar (al revés para no alterar el orden al borrar)
+        // Filtramos al revés para no alterar el orden al borrar
         const filasAEliminar = data.values
-            .map((fila, index) => ({ id: fila[indiceColumnaId], index: index - 1 })) // -1 por el encabezado
+            .map((fila, index) => ({ id: fila[indiceColumnaId], index: index - 1 })) // -1 por encabezado
             .filter(item => item.id && item.id.toString() === facturaID.toString())
             .reverse();
 
@@ -326,7 +300,9 @@ async function eliminarRegistrosPrevios(facturaID) {
     }
 }
 
-
+/**
+ * Verifica si el cliente existe en TClientes; si no, lo registra automáticamente.
+ */
 async function asegurarRegistroCliente(nombreCliente) {
     if (!nombreCliente) return;
 
@@ -345,25 +321,24 @@ async function asegurarRegistroCliente(nombreCliente) {
 
         if (!existe) {
             console.log(`Cliente nuevo detectado: ${nombreCliente}. Registrando...`);
-            
-            // Generar un ID temporal para el cliente (puedes ajustarlo luego)
             const nuevoId = `C-${Date.now().toString().slice(-6)}`;
             
-            // Estructura según tu imagen: Cliente_ID, Nombre, Teléfono, Dirección1, Dirección2, Dirección3, Nota
-            // Los campos adicionales van vacíos por ahora
+            // Estructura: Cliente_ID, Nombre, Teléfono, Dirección1, Dirección2, Dirección3, Nota
             const nuevaFila = [nuevoId, nombreCliente, "", "", "", "", "Registrado desde factura"];
 
             await escribirFilas("TClientes", [nuevaFila]);
+            
+            // Actualizamos la memoria para que aparezca en el buscador sin recargar
+            await actualizarMemoriaClientes();
         }
     } catch (error) {
         console.error("Error al validar/registrar cliente:", error);
-        // No bloqueamos la venta si falla el registro del cliente, solo avisamos en consola
     }
 }
 
 
 // ==========================================
-// 5. PROCESO DE VENTA (ACTUALIZADO)
+// 5. PROCESO DE VENTA (VALIDADO)
 // ==========================================
 document.getElementById('formVentas').onsubmit = async (e) => {
     e.preventDefault();
@@ -381,13 +356,16 @@ document.getElementById('formVentas').onsubmit = async (e) => {
         const token = await getAuthToken();
 
         // --- PASO 0. GESTIÓN DE CLIENTE ---
+        // Esto asegura que si el nombre es nuevo, se registre antes de crear la factura
         await asegurarRegistroCliente(clienteNombre);
 
+        // AJUSTE: Buscamos el ID real del cliente en nuestra memoria para que el Excel quede vinculado correctamente
+        const clienteEncontrado = listaClientesGlobal.find(c => c.nombre === clienteNombre);
+        const clienteIDFinal = clienteEncontrado ? clienteEncontrado.id : "C-NUEVO";
+
         if (esEdicion) {
-            // PASO CRÍTICO: Borra de TFacturas, TDetalle y TAnticipos
             await eliminarRegistrosPrevios(facturaID);
         } else {
-            // Generar ID Correlativo para Factura NUEVA
             const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { 
                 headers: { 'Authorization': `Bearer ${token}` } 
             });
@@ -439,12 +417,10 @@ document.getElementById('formVentas').onsubmit = async (e) => {
             const fechaA = fila.querySelector('.a_fecha').value;
             const montoA = parseFloat(fila.querySelector('.a_monto').value) || 0;
             const notaA = fila.querySelector('.a_comentario').value;
-            
-            // ID de Anticipo único
             const anticipoID = `ANT-${facturaID}-${index + 1}`;
             
-            // Estructura: Anticipo_ID, Factura_ID, Cliente_ID (temporalmente nombre), Fecha, Monto_Recibido, Nota
-            filasAnticipos.push([anticipoID, facturaID, clienteNombre, fechaA, montoA, notaA]);
+            // Usamos clienteIDFinal en lugar de solo el nombre para mantener integridad
+            filasAnticipos.push([anticipoID, facturaID, clienteIDFinal, fechaA, montoA, notaA]);
             totalPagado += montoA;
         });
 
@@ -453,29 +429,28 @@ document.getElementById('formVentas').onsubmit = async (e) => {
         const descG = parseFloat(document.getElementById('v_desc_global').value) || 0;
         const totalF = sumaSubtotales + envio - descG;
 
-        // --- 4. GUARDAR EN EXCEL (Respetando el orden de tus tablas) ---
-        
-        // A. Guardar Detalle de Productos
+        // --- 4. GUARDAR EN EXCEL ---
         await escribirFilas("TDetalle", filasDetalle);
         
-        // B. Guardar Detalle de Anticipos (Si existen)
         if (filasAnticipos.length > 0) {
             await escribirFilas("TAnticipos", filasAnticipos);
         }
 
-        // C. Guardar Cabecera de Factura
-        // Campos: ID, Fecha, Cliente, Envío, DescG, Total, Estado, Pagado
+        // AJUSTE: En TFacturas guardamos el Cliente_ID o Nombre según prefieras en tu reporte
         await escribirFilas("TFacturas", [
             [facturaID, document.getElementById('v_fecha').value, clienteNombre, envio, descG, totalF, "Activo", totalPagado]
         ]);
 
         // --- 5. LIMPIEZA Y FINALIZACIÓN ---
-        limpiarYRegresar(); // Esta función ya resetea el formulario y dataset
+        limpiarYRegresar(); 
         
         document.getElementById('mensaje').innerText = "Procesando...";
         
         setTimeout(async () => {
-            await ImprimirFactura(facturaID); 
+            // Asegúrate de que esta función exista en tu código (Sección 6 o similar)
+            if (typeof ImprimirFactura === "function") {
+                await ImprimirFactura(facturaID); 
+            }
             await leerExcel();
             document.getElementById('mensaje').innerText = "Listo.";
         }, 1200);

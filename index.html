@@ -71,30 +71,37 @@
                     <div id="sugerencias-clientes" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; z-index: 1000; max-height: 200px; overflow-y: auto; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 0 0 4px 4px;"></div>
                 </div>
 
-                <input type="date" id="v_fecha" required>
+                <input type="date" id="v_fecha" required style="width: 100%;">
             </div>
 
-            <div id="contenedor-productos"></div>
-            <button type="button" onclick="agregarFilaProducto()" style="background:#8d6e63; margin-bottom: 20px; width: 100%;">
-                + Añadir Producto a la Lista
-            </button>
-
-            <div style="background:#eee; padding: 15px; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <label>Envío (C$): <input type="number" id="v_envio" value="0" style="width: 100%;"></label>
-                <label>Desc. Global (C$): <input type="number" id="v_desc_global" value="0" style="width: 100%;"></label>
+            <div style="border: 1px solid #d7ccc8; padding: 15px; border-radius: 8px; background: #fffcf5; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 15px 0; color: #8d6e63;">🛍️ Productos del Pedido</h4>
+                
+                <div id="contenedor-productos"></div> <button type="button" onclick="agregarFilaProducto()" 
+                    style="background:#8d6e63; color: white; width: 100%; padding: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px;">
+                    + Añadir Producto a la Lista
+                </button>
             </div>
 
-            <div style="margin-top: 25px; border: 1px solid #d7ccc8; padding: 15px; border-radius: 8px; background: #fffcf5;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h4 style="margin: 0; color: #2e7d32;">💰 Anticipos / Pagos</h4>
-                    <button type="button" onclick="agregarFilaAnticipo()" style="background: #2e7d32; color: white; padding: 4px 10px; border-radius: 4px; border: none; font-size: 0.85em;">
-                        + Agregar Pago
-                    </button>
-                </div>
-                <div id="contenedor-anticipos"></div>
+            <div style="background:#eee; padding: 15px; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 25px;">
+                <label style="font-size: 0.9em; font-weight: bold; color: #555;">Envío (C$): 
+                    <input type="number" id="v_envio" value="0" style="width: 100%; margin-top: 5px;">
+                </label>
+                <label style="font-size: 0.9em; font-weight: bold; color: #555;">Desc. Global (C$): 
+                    <input type="number" id="v_desc_global" value="0" style="width: 100%; margin-top: 5px;">
+                </label>
             </div>
 
-            <button type="submit" style="width:100%; background-color: #28a745; margin-top: 20px; padding: 15px; font-size: 1.1em;">
+            <div style="border: 1px solid #d7ccc8; padding: 15px; border-radius: 8px; background: #fffcf5; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 15px 0; color: #2e7d32;">💰 Anticipos / Pagos</h4>
+                
+                <div id="contenedor-anticipos"></div> <button type="button" onclick="agregarFilaAnticipo()" 
+                    style="background: #2e7d32; color: white; width: 100%; padding: 10px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px;">
+                    + Agregar Pago
+                </button>
+            </div>
+
+            <button type="submit" style="width:100%; background-color: #28a745; margin-top: 10px; padding: 15px; font-size: 1.1em; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
                 Guardar Venta e Imprimir Factura
             </button>
         </form>

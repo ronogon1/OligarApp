@@ -58,6 +58,7 @@ document.getElementById('loginBtn').onclick = async () => {
 // ==========================================
 // 3. NAVEGACIÓN Y UI
 // ==========================================
+
 function navegar(pantalla) {
     const secciones = [
         'seccion-login', 
@@ -68,11 +69,24 @@ function navegar(pantalla) {
         'seccion-menu-reportes',
         'seccion-pantalla-reporte-ventas'
     ];
+
+    // 1. Limpieza de encabezados de edición
+    const labelEstado = document.getElementById('estado-edicion') || document.querySelector('header em'); 
+    const statusMsg = document.querySelector('header p'); // Donde sale "Conectado correctamente"
+
+    if (pantalla !== 'registro-ventas') {
+        // Si no estamos editando, borramos el mensaje de "Editando factura..."
+        if (labelEstado) labelEstado.innerText = '';
+        if (statusMsg) statusMsg.innerText = 'Conectado correctamente.';
+    }
+
+    // 2. Ocultar todas las secciones
     secciones.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
     
+    // 3. Mostrar destino y ejecutar lógica específica
     const destino = document.getElementById('seccion-' + pantalla);
     if (destino) {
         destino.style.display = 'block';
@@ -82,9 +96,15 @@ function navegar(pantalla) {
             if (form.dataset.modo !== "edit") {
                 document.getElementById('contenedor-productos').innerHTML = '';
                 agregarFilaProducto();
+                // Si entra a registro normal, aseguramos que el mensaje sea limpio
+                if (labelEstado) labelEstado.innerText = '';
             }
         }
-        if (pantalla === 'consulta-tablas') { refrescarTablasManual(); }
+
+        if (pantalla === 'consulta-tablas') { 
+            refrescarTablasManual(); 
+        }
+
         if (pantalla === 'gestion-facturas') {
             const panel = document.getElementById('panel-previsualizacion');
             if (panel) panel.style.display = 'none';
@@ -213,7 +233,7 @@ async function irAReporteVentas() {
             fechaFinInput.value = ultimoDia;
         }
 
-        aplicarFiltrosReporte();
+        aplicarFiltrosReporteVentas();
     } catch (error) {
         console.error("Error al cargar reporte:", error);
         contenedor.innerHTML = "<p style='color:red;'>❌ Error: " + error.message + "</p>";

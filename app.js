@@ -89,22 +89,33 @@ function navegar(pantalla) {
 function agregarFilaProducto() {
     const contenedor = document.getElementById('contenedor-productos');
     const div = document.createElement('div');
-    div.className = 'fila-producto';
-    div.style.padding = "10px";
-    div.style.marginBottom = "10px";
+    
+    // Aplicamos estilos a la "tarjeta" contenedora para que la X no se salga
+    div.className = 'fila-producto tarjeta'; 
+    div.style.padding = "12px";
+    div.style.marginBottom = "15px";
+    div.style.border = "1px solid #ddd";
+    div.style.borderRadius = "8px";
+    div.style.background = "#fff";
     div.dataset.fileid = "sin_foto";
     
     div.innerHTML = `
-        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 30px; gap:8px; align-items: center; margin-bottom:8px;">
-            <input type="text" class="p_nombre" placeholder="Producto" required>
-            <input type="number" class="p_cantidad" placeholder="Cantidad" min="1" required>
-            <input type="number" class="p_precio" placeholder="Precio" required>
-            <button type="button" onclick="this.parentElement.parentElement.remove()" 
-                style="color:red; background:none; border:none; cursor:pointer;">✕</button>
+        <div style="display:grid; grid-template-columns: 1fr 70px 90px 30px; gap:8px; align-items: center; margin-bottom:10px;">
+            <input type="text" class="p_nombre" placeholder="Producto" required style="width:100%;">
+            <input type="number" class="p_cantidad" placeholder="Cant" min="1" required style="width:100%;">
+            <input type="number" class="p_precio" placeholder="Precio" required style="width:100%;">
+            
+            <button type="button" onclick="this.closest('.fila-producto').remove()" 
+                style="color:#e53935; background:#ffebee; border:1px solid #ffcdd2; border-radius:50%; width:25px; height:25px; cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
         </div>
+
         <div style="display:flex; gap:10px; align-items: center;">
-            <input type="number" class="p_descuento" placeholder="Descuento en C$" style="flex:1;">
-            <input type="file" class="p_imagen" accept="image/*" style="flex:1.5; font-size: 0.8em;">
+            <div style="flex:1;">
+                <input type="number" class="p_descuento" placeholder="Descuento C$" style="width:100%;">
+            </div>
+            <div style="flex:1.5;">
+                <input type="file" class="p_imagen" accept="image/*" style="width:100%; font-size: 0.8em;">
+            </div>
         </div>
     `;
     contenedor.appendChild(div);

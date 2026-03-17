@@ -90,15 +90,17 @@ function agregarFilaProducto() {
     const contenedor = document.getElementById('contenedor-productos');
     const div = document.createElement('div');
     div.className = 'fila-producto';
+    div.style.padding = "10px";
+    div.style.marginBottom = "10px";
     div.dataset.fileid = "sin_foto";
     
     div.innerHTML = `
-        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 30px; gap:8px; align-items: center; margin-bottom:10px;">
+        <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 30px; gap:8px; align-items: center; margin-bottom:8px;">
             <input type="text" class="p_nombre" placeholder="Producto" required>
             <input type="number" class="p_cantidad" placeholder="Cantidad" min="1" required>
             <input type="number" class="p_precio" placeholder="Precio" required>
             <button type="button" onclick="this.parentElement.parentElement.remove()" 
-                style="color:red; background:none; border:none; cursor:pointer; font-weight:bold; font-size:1.5em; padding:0;">✕</button>
+                style="color:red; background:none; border:none; cursor:pointer;">✕</button>
         </div>
         <div style="display:flex; gap:10px; align-items: center;">
             <input type="number" class="p_descuento" placeholder="Descuento en C$" style="flex:1;">

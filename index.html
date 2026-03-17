@@ -40,10 +40,9 @@
     </div>
 
     <div id="seccion-menu" style="display:none; text-align:center; padding: 20px;">
-        <h2 style="color: var(--primario-oscuro); margin-bottom: 25px;">Oligar Crochet - Panel</h2>
+        <h2 style="color: #5d4037; margin-bottom: 25px;">Oligar Crochet - Panel</h2>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 500px; margin: auto;">
-            
             <button onclick="navegar('registro-ventas')" 
                 style="display: flex; flex-direction: column; align-items: center; padding: 20px; font-size: 0.9em;">
                 <span style="font-size: 1.8em; margin-bottom: 8px;">🛍️</span>
@@ -91,20 +90,17 @@
         <form id="formVentas">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
                 <input type="hidden" id="v_cliente_id"> 
-                
                 <div style="position: relative;">
                     <input type="text" id="v_cliente" placeholder="Nombre del Cliente" required autocomplete="off" style="width: 100%;">
                     <div id="sugerencias-clientes" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; z-index: 1000; max-height: 200px; overflow-y: auto; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 0 0 4px 4px;"></div>
                 </div>
-
                 <input type="date" id="v_fecha" required style="width: 100%;">
             </div>
 
             <div style="border: 1px solid #d7ccc8; padding: 15px; border-radius: 8px; background: #fffcf5; margin-bottom: 20px;">
                 <h4 style="margin: 0 0 15px 0; color: #8d6e63;">🛍️ Productos </h4>
-                
-                <div id="contenedor-productos"></div> <button type="button" onclick="agregarFilaProducto()" 
-                    style="background:#8d6e63; color: white; width: 100%; padding: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px;">
+                <div id="contenedor-productos"></div> 
+                <button type="button" onclick="agregarFilaProducto()" style="background:#8d6e63; color: white; width: 100%; padding: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px;">
                     + Añadir Producto a la Lista
                 </button>
             </div>
@@ -120,9 +116,8 @@
 
             <div style="border: 1px solid #d7ccc8; padding: 15px; border-radius: 8px; background: #fffcf5; margin-bottom: 20px;">
                 <h4 style="margin: 0 0 15px 0; color: #2e7d32;">💰 Anticipos / Pagos</h4>
-                
-                <div id="contenedor-anticipos"></div> <button type="button" onclick="agregarFilaAnticipo()" 
-                    style="background: #2e7d32; color: white; width: 100%; padding: 10px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px;">
+                <div id="contenedor-anticipos"></div> 
+                <button type="button" onclick="agregarFilaAnticipo()" style="background: #2e7d32; color: white; width: 100%; padding: 10px; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px;">
                     + Agregar Pago
                 </button>
             </div>
@@ -186,7 +181,6 @@
     <div id="modal-factura" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; overflow-y:auto;">
         <div id="area-impresion" style="background:white; width:95%; max-width:600px; margin:20px auto; padding:30px; border-radius:10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
             <div id="detalle-factura"></div>
-            
             <div class="ocultar-impresion" style="margin-top:30px; text-align:center; display:flex; justify-content:center; gap:10px;">
                 <button onclick="window.print()" style="background:#5d4037;">🖨️ Imprimir</button>
                 <button onclick="document.getElementById('modal-factura').style.display='none'" style="background:#ccc; color: black;">Cerrar</button>
@@ -194,28 +188,11 @@
         </div>
     </div>
 
-    <p id="mensaje">Estado: Desconectado</p>
-    <script src="app.js"></script>
-
-    <style>
-        .sugerencia-item {
-            padding: 10px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-            color: #333;
-            font-size: 0.9em;
-        }
-        .sugerencia-item:hover {
-            background-color: #f5f5f5;
-            color: #5d4037;
-        }
-    </style>
-
     <div id="seccion-menu-reportes" style="display:none; text-align:center; max-width: 500px; margin: auto;">
         <button onclick="navegar('menu')" style="margin-bottom: 20px; float: left;">← Volver</button>
         <div style="clear: both;"></div>
         
-        <h3 style="color: var(--primario-oscuro);">📊 Centro de Reportes</h3>
+        <h3 style="color: #5d4037;">📊 Centro de Reportes</h3>
         <p style="color: #666; font-style: italic; margin-bottom: 25px;">Selecciona el Reporte</p>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 10px;">
@@ -256,14 +233,14 @@
                 </div>
                 <div style="grid-column: span 2;">
                     <label style="font-size: 0.85em; font-weight: bold; color: #8d6e63;">Estado de Factura:</label>
-                    <select id="filtro-estado">
+                    <select id="filtro-estado" style="width: 100%; padding: 8px;">
                         <option value="TODAS">Todas las facturas</option>
                         <option value="Activa">Solo Activas</option>
                         <option value="Cancelada">Solo Canceladas</option>
                         <option value="Anulada">Solo Anuladas</option>
                     </select>
                 </div>
-                <button onclick="aplicarFiltrosReporte()" style="grid-column: span 2; background: #5d4037; color: white; padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 5px;">
+                <button onclick="aplicarFiltrosReporteVentas()" style="grid-column: span 2; background: #5d4037; color: white; padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 5px;">
                     🔍 Filtrar Reporte
                 </button>
             </div>
@@ -272,5 +249,31 @@
         </div>
     </div>
 
+    <p id="mensaje">Estado: Desconectado</p>
+    
+    <script src="app.js"></script>
+
+    <style>
+        .sugerencia-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            color: #333;
+            font-size: 0.9em;
+        }
+        .sugerencia-item:hover {
+            background-color: #f5f5f5;
+            color: #5d4037;
+        }
+        .tarjeta {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+    </style>
+
 </body>
+
 </html>

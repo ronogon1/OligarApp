@@ -72,10 +72,9 @@ function navegar(pantalla) {
 
     // 1. Limpieza de encabezados de edición
     const labelEstado = document.getElementById('estado-edicion') || document.querySelector('header em'); 
-    const statusMsg = document.querySelector('header p'); // Donde sale "Conectado correctamente"
+    const statusMsg = document.querySelector('header p'); 
 
     if (pantalla !== 'registro-ventas') {
-        // Si no estamos editando, borramos el mensaje de "Editando factura..."
         if (labelEstado) labelEstado.innerText = '';
         if (statusMsg) statusMsg.innerText = 'Conectado correctamente.';
     }
@@ -91,12 +90,21 @@ function navegar(pantalla) {
     if (destino) {
         destino.style.display = 'block';
 
+        // Lógica para Reporte de Ventas: LIMPIEZA INICIAL
+        if (pantalla === 'pantalla-reporte-ventas') {
+            // Limpiamos la tabla para que no cargue datos viejos o automáticos
+            const contenedor = document.getElementById('lista-facturas-reporte');
+            if (contenedor) contenedor.innerHTML = '';
+            
+            // Opcional: Podrías resetear los filtros a "Hoy" o dejarlos como están
+            console.log("Pantalla de reportes lista. Esperando acción del usuario.");
+        }
+
         if (pantalla === 'registro-ventas') {
             const form = document.getElementById('formVentas');
             if (form.dataset.modo !== "edit") {
                 document.getElementById('contenedor-productos').innerHTML = '';
                 agregarFilaProducto();
-                // Si entra a registro normal, aseguramos que el mensaje sea limpio
                 if (labelEstado) labelEstado.innerText = '';
             }
         }
@@ -242,28 +250,30 @@ async function irAReporteVentas() {
 
 
 function aplicarFiltrosReporteVentas() {
-    const inicio = document.getElementById('filtro-fecha-inicio').value; // Espera YYYY-MM-DD
-    const fin = document.getElementById('filtro-fecha-fin').value;       // Espera YYYY-MM-DD
-    const estadoSeleccionado = document.getElementById('filtro-estado').value;
+    const inicio = document.getElementById('filtro-fecha-inicio').value;
+    const fin = document.getElementById('filtro-fecha-fin').value;
+    const estadoSel = document.getElementById('filtro-estado').value;
 
-    if (!window.datosVentasGlobal) return;
+    if (!window.datosVentasGlobal) {
+        return alert("Los datos aún se están cargando desde Excel. Reintenta en un momento.");
+    }
 
     const filtradas = window.datosVentasGlobal.filter(f => {
-        // 1. Normalizar fecha de Excel (serial) a YYYY-MM-DD
-        const fechaF = obtenerFechaComparar(f[1]); 
+        const fechaF = obtenerFechaComparar(f[1]); // Convierte serial a YYYY-MM-DD
+        const estadoExcel = f[6] ? f[6].toString().trim() : "Activa";
         
-        // 2. Obtener estado crudo del Excel (Columna G)
-        const estadoExcel = f[6] ? f[6].toString().trim() : "";
-
-        // 3. Lógica de cumplimiento
-        // Si no hay fechas seleccionadas, ignoramos ese filtro (cumpleFecha = true)
-        const cumpleFecha = (!inicio || !fin) || (fechaF >= inicio && fechaF <= fin);
-        
-        // El estado debe coincidir exactamente (Activa, Cancelada, Anulada)
-        const cumpleEstado = (estadoSeleccionado === "TODAS" || estadoExcel === estadoSeleccionado);
+        const cumpleFecha = (fechaF >= inicio && fechaF <= fin);
+        // Comparamos el valor del select con el estado real del Excel (Activa, Cancelada, Anulada)
+        const cumpleEstado = (estadoSel === "TODAS" || estadoExcel === estadoSel);
         
         return cumpleFecha && cumpleEstado;
     });
+
+    if (filtradas.length === 0) {
+        document.getElementById('lista-facturas-reporte').innerHTML = 
+            '<p style="text-align:center; padding:20px; color:#666;">No se encontraron facturas en este rango/estado.</p>';
+        return;
+    }
 
     renderizarReporteVentas(filtradas);
 }

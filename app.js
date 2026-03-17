@@ -266,30 +266,79 @@ function aplicarFiltrosReporteVentas() {
 
 function renderizarReporteVentas(filas) {
     const contenedor = document.getElementById('lista-facturas-reporte');
-    const total = filas.reduce((acc, f) => acc + parseFloat(f[5] || 0), 0);
+    if (!contenedor) return;
+
+    // Calculamos el total de ventas (solo de las que no están anuladas para un cierre real)
+    const totalGeneral = filas.reduce((acc, f) => {
+        return f[6] !== 'Anulada' ? acc + parseFloat(f[5] || 0) : acc;
+    }, 0);
 
     contenedor.innerHTML = `
         <div style="background: #e8f5e9; padding: 15px; border-radius: 5px; margin-bottom: 15px; text-align: right; border-left: 5px solid #2e7d32;">
-            <span style="color: #666; font-size: 0.9em;">Total en periodo seleccionado:</span><br>
-            <strong style="font-size: 1.4em; color: #2e7d32;">C$ ${total.toFixed(2)}</strong>
+            <span style="color: #666; font-size: 0.9em;">Ventas Netas (Activas + Canceladas):</span><br>
+            <strong style="font-size: 1.4em; color: #2e7d32;">C$ ${totalGeneral.toLocaleString('en-US', {minimumFractionDigits: 2})}</strong>
         </div>
-        <table class="tabla-consultas" style="width:100%; font-size: 0.85em;">
-            <thead>
-                <tr style="background: #8d6e63; color: white;">
-                    <th>ID</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Acc.</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${filas.map(f => `
-                <tr style="${f[6] === 'Anulado' ? 'text-decoration: line-through; color: #bbb;' : ''}">
-                    <td>${f[0]}</td>
-                    <td>${excelSerialToDate(f[1])}</td>
-                    <td>${f[2]}</td>
-                    <td style="font-weight: bold;">C$ ${f[5]}</td>
-                    <td><button onclick="previsualizarFactura('${f[0]}')">👁️</button></td>
-                </tr>`).join('')}
-            </tbody>
-        </table>
+        <div style="overflow-x: auto;">
+            <table class="tabla-consultas" style="width:100%; font-size: 0.8em; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #8d6e63; color: white;">
+                        <th>Factura N°</th>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Subtotal</th>
+                        <th>Envío</th>
+                        <th>Desc.</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filas.map(f => {
+                        // 1. Formateo de fecha
+                        const fechaObj = excelSerialToDate(f[1]);
+                        const fechaFormateada = `${String(fechaObj.getDate()).padStart(2,'0')}/${String(fechaObj.getMonth()+1).padStart(2,'0')}/${fechaObj.getFullYear()}`;
+
+                        // 2. Valores numéricos
+                        const envio = parseFloat(f[3] || 0);
+                        const desc = parseFloat(f[4] || 0);
+                        const totalf = parseFloat(f[5] || 0);
+                        const pagado = parseFloat(f[7] || 0); // Columna 'Pagado' en tu Excel
+                        const subtotal = totalf - envio + desc;
+
+                        // 3. LÓGICA DE ESTADOS DINÁMICOS
+                        let estadoReal = f[6]; // Valor que viene del Excel (Activa / Anulada)
+                        
+                        if (estadoReal !== 'Anulada') {
+                            // Si lo pagado es igual o mayor al total, está Cancelada
+                            estadoReal = (pagado >= totalf && totalf > 0) ? 'Cancelada' : 'Activa';
+                        }
+
+                        // 4. Estilos por estado
+                        let colorEstado = "#2e7d32"; // Verde para Cancelada
+                        if (estadoReal === 'Activa') colorEstado = "#f57c00"; // Naranja para pendiente
+                        if (estadoReal === 'Anulada') colorEstado = "#d32f2f"; // Rojo
+
+                        return `
+                        <tr style="${estadoReal === 'Anulada' ? 'text-decoration: line-through; color: #bbb;' : ''}">
+                            <td>${f[0]}</td>
+                            <td>${fechaFormateada}</td>
+                            <td style="text-align: left;">${f[2]}</td>
+                            <td>${subtotal.toFixed(2)}</td>
+                            <td>${envio.toFixed(2)}</td>
+                            <td>${desc.toFixed(2)}</td>
+                            <td style="font-weight: bold;">C$ ${totalf.toFixed(2)}</td>
+                            <td>
+                                <span style="color: ${colorEstado}; font-weight: bold;">${estadoReal}</span>
+                            </td>
+                            <td>
+                                <button onclick="previsualizarFactura('${f[0]}')" style="padding: 4px 8px;">👁️</button>
+                            </td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
     `;
 }
 
@@ -470,6 +519,7 @@ async function asegurarRegistroCliente(nombreCliente) {
 // ==========================================
 // 5. PROCESO DE VENTA (VALIDADO)
 // ==========================================
+
 document.getElementById('formVentas').onsubmit = async (e) => {
     e.preventDefault();
     const btn = e.submitter;
@@ -486,10 +536,7 @@ document.getElementById('formVentas').onsubmit = async (e) => {
         const token = await getAuthToken();
 
         // --- PASO 0. GESTIÓN DE CLIENTE ---
-        // Esto asegura que si el nombre es nuevo, se registre antes de crear la factura
         await asegurarRegistroCliente(clienteNombre);
-
-        // AJUSTE: Buscamos el ID real del cliente en nuestra memoria para que el Excel quede vinculado correctamente
         const clienteEncontrado = listaClientesGlobal.find(c => c.nombre === clienteNombre);
         const clienteIDFinal = clienteEncontrado ? clienteEncontrado.id : "C-NUEVO";
 
@@ -549,7 +596,6 @@ document.getElementById('formVentas').onsubmit = async (e) => {
             const notaA = fila.querySelector('.a_comentario').value;
             const anticipoID = `ANT-${facturaID}-${index + 1}`;
             
-            // Usamos clienteIDFinal en lugar de solo el nombre para mantener integridad
             filasAnticipos.push([anticipoID, facturaID, clienteIDFinal, fechaA, montoA, notaA]);
             totalPagado += montoA;
         });
@@ -559,6 +605,10 @@ document.getElementById('formVentas').onsubmit = async (e) => {
         const descG = parseFloat(document.getElementById('v_desc_global').value) || 0;
         const totalF = sumaSubtotales + envio - descG;
 
+        // --- LÓGICA DE ESTADO INTELIGENTE ---
+        // Si el total pagado cubre la factura, se guarda como "Cancelada", si no "Activa"
+        let estadoFinal = (totalPagado >= totalF && totalF > 0) ? "Cancelada" : "Activa";
+
         // --- 4. GUARDAR EN EXCEL ---
         await escribirFilas("TDetalle", filasDetalle);
         
@@ -566,9 +616,9 @@ document.getElementById('formVentas').onsubmit = async (e) => {
             await escribirFilas("TAnticipos", filasAnticipos);
         }
 
-        // AJUSTE: En TFacturas guardamos el Cliente_ID o Nombre según prefieras en tu reporte
+        // Guardamos en TFacturas con el estado dinámico
         await escribirFilas("TFacturas", [
-            [facturaID, document.getElementById('v_fecha').value, clienteNombre, envio, descG, totalF, "Activo", totalPagado]
+            [facturaID, document.getElementById('v_fecha').value, clienteNombre, envio, descG, totalF, estadoFinal, totalPagado]
         ]);
 
         // --- 5. LIMPIEZA Y FINALIZACIÓN ---
@@ -577,7 +627,6 @@ document.getElementById('formVentas').onsubmit = async (e) => {
         document.getElementById('mensaje').innerText = "Procesando...";
         
         setTimeout(async () => {
-            // Asegúrate de que esta función exista en tu código (Sección 6 o similar)
             if (typeof ImprimirFactura === "function") {
                 await ImprimirFactura(facturaID); 
             }
@@ -586,6 +635,7 @@ document.getElementById('formVentas').onsubmit = async (e) => {
         }, 1200);
 
     } catch (err) {
+        console.error(err);
         alert("Error al guardar: " + err.message);
         document.getElementById('mensaje').innerText = "Error en el registro.";
     } finally {
@@ -787,8 +837,9 @@ function generarFactura(d) {
 }
 
 
-async function previsualizarFactura() {
-    const id = document.getElementById('busqueda_factura').value;
+async function previsualizarFactura(idParam) {
+    // Si pasamos el ID por parámetro lo usamos, si no, lo buscamos en el input
+    const id = idParam || document.getElementById('busqueda_factura').value;
     if (!id) return alert("Ingresa un ID");
 
     try {
@@ -804,9 +855,9 @@ async function previsualizarFactura() {
         // 1. Mostrar el panel
         document.getElementById('panel-previsualizacion').style.display = 'block';
 
-        // 2. Llenar campos bloqueados (Mapeo de columnas Excel)
-        // fC[2]=Cliente, fC[1]=Fecha, fC[5]=Total, fC[3]=Envío, fC[7]=Pagado
+        // 2. Llenar campos y calcular saldos
         document.getElementById('pre_cliente').value = fC[2];
+        // Nota: excelSerialToDate ya devuelve un objeto Date según tus funciones previas
         document.getElementById('pre_fecha').value = excelSerialToDate(fC[1]).toLocaleDateString();
         
         const totalFactura = parseFloat(fC[5]) || 0;
@@ -816,16 +867,19 @@ async function previsualizarFactura() {
         document.getElementById('pre_total').value = "C$ " + totalFactura.toLocaleString('en-US', {minimumFractionDigits:2});
         document.getElementById('pre_envio').value = "C$ " + (parseFloat(fC[3]) || 0).toLocaleString('en-US', {minimumFractionDigits:2});
         
-        // Llenado de Pagado y Saldo (asegurando que los IDs existan en el HTML)
         if(document.getElementById('pre_pagado')) {
             document.getElementById('pre_pagado').value = "C$ " + totalPagado.toLocaleString('en-US', {minimumFractionDigits:2});
         }
         if(document.getElementById('pre_saldo')) {
-            document.getElementById('pre_saldo').value = "C$ " + saldo.toLocaleString('en-US', {minimumFractionDigits:2});
+            const elSaldo = document.getElementById('pre_saldo');
+            elSaldo.value = "C$ " + saldo.toLocaleString('en-US', {minimumFractionDigits:2});
+            // Estilo visual para el saldo: rojo si hay deuda
+            elSaldo.style.color = saldo > 0 ? "#c62828" : "#2e7d32";
+            elSaldo.style.fontWeight = "bold";
         }
 
-        // 3. Gestionar el Estatus (Color y Texto)
-        const estado = fC[6] || "Activo"; // Columna G
+        // 3. Gestión de Estatus Dinámico (Colores para Activa, Cancelada, Anulada)
+        const estado = fC[6] || "Activa"; 
         const badge = document.getElementById('status-badge');
         const txtStatus = document.getElementById('txt-status');
         
@@ -835,27 +889,34 @@ async function previsualizarFactura() {
         const btnAnular = document.getElementById('btn-pre-anular');
         const btnActivar = document.getElementById('btn-pre-activar');
 
-        if (estado === "Anulado") {
-            badge.style.background = "#ffebee"; 
+        // Reset de botones y estilos
+        btnEditar.style.display = 'block';
+        btnAnular.style.display = 'block';
+        if(btnActivar) btnActivar.style.display = 'none';
+
+        if (estado === "Anulada") {
+            badge.style.background = "#ffebee"; // Rojo claro
             badge.style.color = "#c62828";
             btnEditar.style.display = 'none';
             btnAnular.style.display = 'none';
             if(btnActivar) btnActivar.style.display = 'block'; 
-        } else {
-            badge.style.background = "#e8f5e9"; 
+        } 
+        else if (estado === "Cancelada") {
+            badge.style.background = "#e8f5e9"; // Verde
             badge.style.color = "#2e7d32";
-            btnEditar.style.display = 'block';
-            btnAnular.style.display = 'block';
-            if(btnActivar) btnActivar.style.display = 'none';
+        } 
+        else { // "Activa"
+            badge.style.background = "#fff3e0"; // Naranja claro
+            badge.style.color = "#ef6c00";
         }
 
-        // 4. Configurar eventos de los botones
+        // 4. Configurar eventos
         btnEditar.onclick = () => cargarFacturaParaEditar(id);
         document.getElementById('btn-pre-imprimir').onclick = () => ImprimirFactura(id);
-        btnAnular.onclick = () => cambiarEstadoFactura(id, "Anulado");
+        btnAnular.onclick = () => cambiarEstadoFactura(id, "Anulada");
         
         if(btnActivar) {
-            btnActivar.onclick = () => cambiarEstadoFactura(id, "Activo");
+            btnActivar.onclick = () => cambiarEstadoFactura(id, "Activa");
         }
 
     } catch (e) {
@@ -1063,7 +1124,9 @@ async function cargarFacturaParaEditar(idFactura) {
 
 
 async function cambiarEstadoFactura(id, nuevoEstado) {
-    const confirmar = confirm(`¿Reactivar factura ${id}?`);
+    // Si el nuevoEstado es "Activo", evaluaremos si debe ser "Activa" o "Cancelada"
+    const accion = nuevoEstado === "Anulada" ? "Anular" : "Reactivar";
+    const confirmar = confirm(`¿Deseas ${accion} la factura ${id}?`);
     if (!confirmar) return;
 
     try {
@@ -1080,14 +1143,31 @@ async function cambiarEstadoFactura(id, nuevoEstado) {
         
         if (filaEncontradaIndex === -1) return alert("No se encontró la factura.");
 
-        // 3. Calculamos el índice para itemAt (fila actual del array menos 1 del encabezado)
-        const apiIndex = filaEncontradaIndex - 1;
-
-        // 4. Clonamos la fila y cambiamos SOLO el estado (Columna G = índice 6)
+        // 3. Clonamos la fila original
         const filaParaActualizar = [...data.values[filaEncontradaIndex]];
-        filaParaActualizar[6] = nuevoEstado; 
+        
+        // --- LÓGICA DE ESTADO INTELIGENTE ---
+        let estadoFinal = nuevoEstado; // Por defecto lo que recibimos (Anulada o Activa)
 
-        // 5. Enviamos el PATCH a la fila específica
+        if (nuevoEstado !== "Anulada") {
+            // Extraemos valores numéricos de la fila (Índice 5: Total, Índice 7: Pagado)
+            const total = parseFloat(filaParaActualizar[5] || 0);
+            const pagado = parseFloat(filaParaActualizar[7] || 0);
+
+            // Si lo pagado alcanza al total, el estado real es Cancelada
+            if (pagado >= total && total > 0) {
+                estadoFinal = "Cancelada";
+            } else {
+                estadoFinal = "Activa";
+            }
+        }
+        // ------------------------------------
+
+        // 4. Aplicamos el estado calculado (Columna G = índice 6)
+        filaParaActualizar[6] = estadoFinal; 
+
+        // 5. Calculamos el índice para itemAt (fila actual del array menos 1 del encabezado)
+        const apiIndex = filaEncontradaIndex - 1;
         const urlUpdate = `${graphBaseUrl}/workbook/tables/TFacturas/rows/itemAt(index=${apiIndex})`;
         
         const resp = await fetch(urlUpdate, {
@@ -1100,9 +1180,10 @@ async function cambiarEstadoFactura(id, nuevoEstado) {
         });
 
         if (resp.ok) {
-            alert(`Éxito: Factura ${id} ahora está ${nuevoEstado}`);
-            // Recargamos la previsualización para que el badge cambie a verde/rojo solo
-            previsualizarFactura(); 
+            alert(`Éxito: Factura ${id} ahora está ${estadoFinal}`);
+            // Recargamos la previsualización y las tablas para refrescar la vista
+            if (typeof previsualizarFactura === 'function') previsualizarFactura(id);
+            if (typeof refrescarTablasManual === 'function') refrescarTablasManual();
         } else {
             alert("Error al guardar en Excel. Revisa la conexión.");
         }

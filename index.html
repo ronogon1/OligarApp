@@ -256,10 +256,11 @@
                 </div>
                 <div style="grid-column: span 2;">
                     <label style="font-size: 0.85em; font-weight: bold; color: #8d6e63;">Estado de Factura:</label>
-                    <select id="filtro-estado" style="width: 100%; padding: 8px;">
+                    <select id="filtro-estado">
                         <option value="TODAS">Todas las facturas</option>
-                        <option value="Activo" selected>Solo Activas</option>
-                        <option value="Anulado">Solo Anuladas</option>
+                        <option value="Activa">Solo Activas</option>
+                        <option value="Cancelada">Solo Canceladas</option>
+                        <option value="Anulada">Solo Anuladas</option>
                     </select>
                 </div>
                 <button onclick="aplicarFiltrosReporte()" style="grid-column: span 2; background: #5d4037; color: white; padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 5px;">

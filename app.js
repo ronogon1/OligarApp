@@ -242,20 +242,25 @@ async function irAReporteVentas() {
 
 
 function aplicarFiltrosReporteVentas() {
-    const inicio = document.getElementById('filtro-fecha-inicio').value; // Formato YYYY-MM-DD
-    const fin = document.getElementById('filtro-fecha-fin').value;       // Formato YYYY-MM-DD
-    const estado = document.getElementById('filtro-estado').value;
+    const inicio = document.getElementById('filtro-fecha-inicio').value; // Espera YYYY-MM-DD
+    const fin = document.getElementById('filtro-fecha-fin').value;       // Espera YYYY-MM-DD
+    const estadoSeleccionado = document.getElementById('filtro-estado').value;
 
     if (!window.datosVentasGlobal) return;
 
     const filtradas = window.datosVentasGlobal.filter(f => {
-        // Usamos la nueva función de apoyo para obtener el formato ISO del serial de Excel
+        // 1. Normalizar fecha de Excel (serial) a YYYY-MM-DD
         const fechaF = obtenerFechaComparar(f[1]); 
-        const estadoF = f[6] ? f[6].toString().trim() : "";
         
-        // Comparación lógica de strings (ej: "2026-03-01" >= "2026-01-01")
-        const cumpleFecha = (fechaF >= inicio && fechaF <= fin);
-        const cumpleEstado = (estado === "TODAS" || estadoF === estado);
+        // 2. Obtener estado crudo del Excel (Columna G)
+        const estadoExcel = f[6] ? f[6].toString().trim() : "";
+
+        // 3. Lógica de cumplimiento
+        // Si no hay fechas seleccionadas, ignoramos ese filtro (cumpleFecha = true)
+        const cumpleFecha = (!inicio || !fin) || (fechaF >= inicio && fechaF <= fin);
+        
+        // El estado debe coincidir exactamente (Activa, Cancelada, Anulada)
+        const cumpleEstado = (estadoSeleccionado === "TODAS" || estadoExcel === estadoSeleccionado);
         
         return cumpleFecha && cumpleEstado;
     });
@@ -1242,12 +1247,13 @@ function formatFechaDDMMYYYY(date) {
 
 function obtenerFechaComparar(serial) {
     if (!serial || isNaN(serial)) return "";
+    // Ajuste para época de Excel
     const excelEpoch = new Date(1899, 11, 30);
     const date = new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
     
-    // Retorna YYYY-MM-DD para comparar directamente con el valor del input date
     const yyyy = date.getFullYear();
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+    
+    return `${yyyy}-${mm}-${dd}`; // Retorna "2026-03-14"
 }

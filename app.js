@@ -290,7 +290,7 @@ function renderizarReporteVentas(filas) {
 
     contenedor.innerHTML = `
         <div style="background: #e8f5e9; padding: 15px; border-radius: 5px; margin-bottom: 15px; text-align: right; border-left: 5px solid #2e7d32;">
-            <span style="color: #666; font-size: 0.9em;">Ventas Netas (Activas + Canceladas):</span><br>
+            <span style="color: #666; font-size: 0.9em;">Total Ventas:</span><br>
             <strong style="font-size: 1.4em; color: #2e7d32;">C$ ${totalGeneral.toLocaleString('en-US', {minimumFractionDigits: 2})}</strong>
         </div>
         <div style="overflow-x: auto;">

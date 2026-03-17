@@ -66,7 +66,7 @@ function navegar(pantalla) {
         'seccion-registro-ventas', 
         'seccion-gestion-facturas',
         'seccion-menu-reportes',
-        'seccion-pnatalla-reporte-ventas'
+        'seccion-pantalla-reporte-ventas'
     ];
     secciones.forEach(id => {
         const el = document.getElementById(id);
@@ -187,21 +187,37 @@ document.addEventListener('click', (e) => {
 
 async function irAReporteVentas() {
     navegar('pantalla-reporte-ventas');
-    document.getElementById('lista-facturas-reporte').innerHTML = "<p>Cargando datos...</p>";
+    const contenedor = document.getElementById('lista-facturas-reporte');
+    contenedor.innerHTML = "<p style='text-align:center;'>⌛ Cargando datos desde Excel...</p>";
     
-    // Obtener datos de Excel
-    const datos = await leerExcel();
-    window.datosVentasGlobal = datos.TFacturas.slice(1); // Guardamos en memoria para filtrar rápido
-    
-    // Configurar fechas: Mes actual por defecto
-    const hoy = new Date();
-    const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
-    const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().split('T')[0];
-    
-    document.getElementById('filtro-fecha-inicio').value = primerDia;
-    document.getElementById('filtro-fecha-fin').value = ultimoDia;
+    try {
+        const datos = await leerExcel(); 
+        if (!datos || !datos.TFacturas) {
+            contenedor.innerHTML = "<p style='color:red;'>❌ No se pudieron obtener los datos de facturas.</p>";
+            return;
+        }
 
-    aplicarFiltrosReporteVentas();
+        // Guardamos los datos omitiendo el encabezado
+        window.datosVentasGlobal = datos.TFacturas.slice(1);
+        
+        // Configuramos las fechas por defecto solo si el campo está vacío
+        const fechaInicioInput = document.getElementById('filtro-fecha-inicio');
+        const fechaFinInput = document.getElementById('filtro-fecha-fin');
+        
+        if (!fechaInicioInput.value || !fechaFinInput.value) {
+            const hoy = new Date();
+            const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+            const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().split('T')[0];
+            
+            fechaInicioInput.value = primerDia;
+            fechaFinInput.value = ultimoDia;
+        }
+
+        aplicarFiltrosReporte();
+    } catch (error) {
+        console.error("Error al cargar reporte:", error);
+        contenedor.innerHTML = "<p style='color:red;'>❌ Error: " + error.message + "</p>";
+    }
 }
 
 

@@ -242,15 +242,21 @@ async function irAReporteVentas() {
 
 
 function aplicarFiltrosReporteVentas() {
-    const inicio = document.getElementById('filtro-fecha-inicio').value;
-    const fin = document.getElementById('filtro-fecha-fin').value;
+    const inicio = document.getElementById('filtro-fecha-inicio').value; // Formato YYYY-MM-DD
+    const fin = document.getElementById('filtro-fecha-fin').value;       // Formato YYYY-MM-DD
     const estado = document.getElementById('filtro-estado').value;
 
+    if (!window.datosVentasGlobal) return;
+
     const filtradas = window.datosVentasGlobal.filter(f => {
-        const fechaF = excelSerialToDate(f[1]);
-        const estadoF = f[6];
-        const cumpleFecha = fechaF >= inicio && fechaF <= fin;
-        const cumpleEstado = estado === "TODAS" || estadoF === estado;
+        // Usamos la nueva función de apoyo para obtener el formato ISO del serial de Excel
+        const fechaF = obtenerFechaComparar(f[1]); 
+        const estadoF = f[6] ? f[6].toString().trim() : "";
+        
+        // Comparación lógica de strings (ej: "2026-03-01" >= "2026-01-01")
+        const cumpleFecha = (fechaF >= inicio && fechaF <= fin);
+        const cumpleEstado = (estado === "TODAS" || estadoF === estado);
+        
         return cumpleFecha && cumpleEstado;
     });
 
@@ -1153,3 +1159,14 @@ function formatFechaDDMMYYYY(date) {
     return `${dd}/${mm}/${yyyy}`;
 }
 
+function obtenerFechaComparar(serial) {
+    if (!serial || isNaN(serial)) return "";
+    const excelEpoch = new Date(1899, 11, 30);
+    const date = new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
+    
+    // Retorna YYYY-MM-DD para comparar directamente con el valor del input date
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}

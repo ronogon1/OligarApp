@@ -39,16 +39,39 @@
         <button id="loginBtn" style="background-color: #0078d4; padding: 12px 24px; font-size: 14px;">Conectar</button>
     </div>
 
-    <div id="seccion-menu" style="display:none; text-align:center;">
-        <h2 style="color: var(--primario-oscuro);">Panel de Control</h2>
-        <div style="display: grid; grid-template-columns: 1fr; gap: 15px; max-width: 400px; margin: auto; padding: 20px;">
-            <button onclick="navegar('registro-ventas')">🛍️ Nueva Venta </button>
-            <button onclick="navegar('gestion-facturas')">⚙️ Gestionar Factura </button>
+    <div id="seccion-menu" style="display:none; text-align:center; padding: 20px;">
+        <h2 style="color: var(--primario-oscuro); margin-bottom: 25px;">Oligar Crochet - Panel</h2>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 500px; margin: auto;">
             
-            <button onclick="navegar('menu-reportes')" style="background-color: #5d4037;">📊 Reportes </button>
-            
-            <button onclick="navegar('consulta-tablas')" style="background: #9e9e9e;">📋 Consulta General de Tablas</button>
-            <button onclick="location.reload()" style="background: #c62828; margin-top: 10px;">🔄 Salir / Cerrar Sesión</button>
+            <button onclick="navegar('registro-ventas')" 
+                style="display: flex; flex-direction: column; align-items: center; padding: 20px; font-size: 0.9em;">
+                <span style="font-size: 1.8em; margin-bottom: 8px;">🛍️</span>
+                Nueva Venta
+            </button>
+
+            <button onclick="navegar('gestion-facturas')" 
+                style="display: flex; flex-direction: column; align-items: center; padding: 20px; font-size: 0.9em; background-color: #795548;">
+                <span style="font-size: 1.8em; margin-bottom: 8px;">⚙️</span>
+                Gestionar Facturas
+            </button>
+
+            <button onclick="navegar('menu-reportes')" 
+                style="display: flex; flex-direction: column; align-items: center; padding: 20px; font-size: 0.9em; background-color: #5d4037;">
+                <span style="font-size: 1.8em; margin-bottom: 8px;">📊</span>
+                Reportes
+            </button>
+
+            <button onclick="navegar('consulta-tablas')" 
+                style="display: flex; flex-direction: column; align-items: center; padding: 20px; font-size: 0.9em; background-color: #9e9e9e;">
+                <span style="font-size: 1.8em; margin-bottom: 8px;">📋</span>
+                Consulta de Tablas
+            </button>
+
+            <button onclick="location.reload()" 
+                style="grid-column: span 2; background: #c62828; margin-top: 10px; padding: 12px;">
+                🔄 Cerrar Sesión / Recargar
+            </button>
         </div>
     </div>
 
@@ -193,26 +216,58 @@
         <div style="clear: both;"></div>
         
         <h3 style="color: var(--primario-oscuro);">📊 Centro de Reportes</h3>
-        <p style="color: #666; font-style: italic; margin-bottom: 25px;">Selecciona el análisis que deseas consultar</p>
+        <p style="color: #666; font-style: italic; margin-bottom: 25px;">Selecciona el Reporte</p>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 10px;">
-            <button onclick="alert('Próximamente: Reporte de Ventas')" 
-                style="display: flex; flex-direction: column; padding: 20px; background: white; color: #5d4037; border: 2px solid #d7ccc8;">
+            <button onclick="irAReporteVentas()" 
+                style="display: flex; flex-direction: column; padding: 20px; background: white; color: #5d4037; border: 2px solid #d7ccc8; cursor: pointer; border-radius: 8px;">
                 <span style="font-size: 2em; margin-bottom: 10px;">📅</span>
-                Ventas Mensuales
+                Reporte de Ventas
             </button>
 
             <button onclick="alert('Próximamente: Stock de Productos')" 
-                style="display: flex; flex-direction: column; padding: 20px; background: white; color: #5d4037; border: 2px solid #d7ccc8;">
+                style="display: flex; flex-direction: column; padding: 20px; background: white; color: #5d4037; border: 2px solid #d7ccc8; border-radius: 8px;">
                 <span style="font-size: 2em; margin-bottom: 10px;">🧸</span>
-                Top Productos
+                Stock de Productos
             </button>
 
             <button onclick="alert('Próximamente: Ganancia obtenida')" 
-                style="display: flex; flex-direction: column; padding: 20px; background: white; color: #5d4037; border: 2px solid #d7ccc8;">
+                style="display: flex; flex-direction: column; padding: 20px; background: white; color: #5d4037; border: 2px solid #d7ccc8; border-radius: 8px;">
                 <span style="font-size: 2em; margin-bottom: 10px;">💸</span>
-                Cuentas por Cobrar
+                Ganancia obtenida
             </button>
+        </div>
+    </div>
+
+    <div id="seccion-pantalla-reporte-ventas" style="display:none; max-width: 800px; margin: auto; padding: 10px;">
+        <button onclick="navegar('menu-reportes')" style="margin-bottom: 20px;">← Volver a Reportes</button>
+        
+        <div class="tarjeta" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h3 style="color: #5d4037; margin-top: 0;">📊 Reporte de Ventas </h3>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #fffcf5; padding: 15px; border: 1px solid #d7ccc8; border-radius: 8px; margin-bottom: 20px;">
+                <div>
+                    <label style="font-size: 0.85em; font-weight: bold; color: #8d6e63;">Desde:</label>
+                    <input type="date" id="filtro-fecha-inicio" style="width: 100%; padding: 8px;">
+                </div>
+                <div>
+                    <label style="font-size: 0.85em; font-weight: bold; color: #8d6e63;">Hasta:</label>
+                    <input type="date" id="filtro-fecha-fin" style="width: 100%; padding: 8px;">
+                </div>
+                <div style="grid-column: span 2;">
+                    <label style="font-size: 0.85em; font-weight: bold; color: #8d6e63;">Estado de Factura:</label>
+                    <select id="filtro-estado" style="width: 100%; padding: 8px;">
+                        <option value="TODAS">Todas las facturas</option>
+                        <option value="Activo" selected>Solo Activas</option>
+                        <option value="Anulado">Solo Anuladas</option>
+                    </select>
+                </div>
+                <button onclick="aplicarFiltrosReporte()" style="grid-column: span 2; background: #5d4037; color: white; padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 5px;">
+                    🔍 Filtrar Reporte
+                </button>
+            </div>
+
+            <div id="lista-facturas-reporte"></div>
         </div>
     </div>
 

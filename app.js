@@ -59,7 +59,15 @@ document.getElementById('loginBtn').onclick = async () => {
 // 3. NAVEGACIÓN Y UI
 // ==========================================
 function navegar(pantalla) {
-    const secciones = ['seccion-login', 'seccion-menu', 'seccion-consulta-tablas', 'seccion-registro-ventas', 'seccion-gestion-facturas'];
+    const secciones = [
+        'seccion-login', 
+        'seccion-menu', 
+        'seccion-consulta-tablas', 
+        'seccion-registro-ventas', 
+        'seccion-gestion-facturas',
+        'seccion-menu-reportes',
+        'seccion-pnatalla-reporte-ventas'
+    ];
     secciones.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
@@ -175,6 +183,73 @@ document.addEventListener('click', (e) => {
         document.getElementById('sugerencias-clientes').style.display = 'none';
     }
 });
+
+
+async function irAReporteVentas() {
+    navegar('pantalla-reporte-ventas');
+    document.getElementById('lista-facturas-reporte').innerHTML = "<p>Cargando datos...</p>";
+    
+    // Obtener datos de Excel
+    const datos = await leerExcel();
+    window.datosVentasGlobal = datos.TFacturas.slice(1); // Guardamos en memoria para filtrar rápido
+    
+    // Configurar fechas: Mes actual por defecto
+    const hoy = new Date();
+    const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+    const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().split('T')[0];
+    
+    document.getElementById('filtro-fecha-inicio').value = primerDia;
+    document.getElementById('filtro-fecha-fin').value = ultimoDia;
+
+    aplicarFiltrosReporteVentas();
+}
+
+
+function aplicarFiltrosReporteVentas() {
+    const inicio = document.getElementById('filtro-fecha-inicio').value;
+    const fin = document.getElementById('filtro-fecha-fin').value;
+    const estado = document.getElementById('filtro-estado').value;
+
+    const filtradas = window.datosVentasGlobal.filter(f => {
+        const fechaF = excelSerialToDate(f[1]);
+        const estadoF = f[6];
+        const cumpleFecha = fechaF >= inicio && fechaF <= fin;
+        const cumpleEstado = estado === "TODAS" || estadoF === estado;
+        return cumpleFecha && cumpleEstado;
+    });
+
+    renderizarReporteVentas(filtradas);
+}
+
+
+function renderizarReporteVentas(filas) {
+    const contenedor = document.getElementById('lista-facturas-reporte');
+    const total = filas.reduce((acc, f) => acc + parseFloat(f[5] || 0), 0);
+
+    contenedor.innerHTML = `
+        <div style="background: #e8f5e9; padding: 15px; border-radius: 5px; margin-bottom: 15px; text-align: right; border-left: 5px solid #2e7d32;">
+            <span style="color: #666; font-size: 0.9em;">Total en periodo seleccionado:</span><br>
+            <strong style="font-size: 1.4em; color: #2e7d32;">C$ ${total.toFixed(2)}</strong>
+        </div>
+        <table class="tabla-consultas" style="width:100%; font-size: 0.85em;">
+            <thead>
+                <tr style="background: #8d6e63; color: white;">
+                    <th>ID</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Acc.</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${filas.map(f => `
+                <tr style="${f[6] === 'Anulado' ? 'text-decoration: line-through; color: #bbb;' : ''}">
+                    <td>${f[0]}</td>
+                    <td>${excelSerialToDate(f[1])}</td>
+                    <td>${f[2]}</td>
+                    <td style="font-weight: bold;">C$ ${f[5]}</td>
+                    <td><button onclick="previsualizarFactura('${f[0]}')">👁️</button></td>
+                </tr>`).join('')}
+            </tbody>
+        </table>
+    `;
+}
 
 
 // ==========================================

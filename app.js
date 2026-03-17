@@ -185,7 +185,7 @@ document.addEventListener('click', (e) => {
  * Lee los datos de las tablas principales de Excel.
  */
 async function leerExcel() {
-    const tablas = ["TFacturas", "TDetalle"]; 
+    const tablas = ["TFacturas", "TDetalle", "TAnticipos", "TClientes"]; 
     const token = await getAuthToken();
     const resultados = {}; // Aquí guardaremos los datos de las tablas
 

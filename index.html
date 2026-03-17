@@ -40,12 +40,15 @@
     </div>
 
     <div id="seccion-menu" style="display:none; text-align:center;">
-        <h2 style="color: #5d4037;">Menú Principal</h2>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 500px; margin: auto; padding: 20px;">
-            <button onclick="navegar('registro-ventas')">🛍️ Registrar Venta</button>
-            <button onclick="navegar('consulta-tablas')">📊 Consulta de Tablas</button>
-            <button onclick="navegar('gestion-facturas')">⚙️ Gestión de Facturas</button>
-            <button onclick="location.reload()">🔄 Cerrar Sesión</button>
+        <h2 style="color: var(--primario-oscuro);">Panel de Control</h2>
+        <div style="display: grid; grid-template-columns: 1fr; gap: 15px; max-width: 400px; margin: auto; padding: 20px;">
+            <button onclick="navegar('registro-ventas')">🛍️ Nueva Venta </button>
+            <button onclick="navegar('gestion-facturas')">⚙️ Gestionar Factura </button>
+            
+            <button onclick="navegar('menu-reportes')" style="background-color: #5d4037;">📊 Reportes </button>
+            
+            <button onclick="navegar('consulta-tablas')" style="background: #9e9e9e;">📋 Consulta General de Tablas</button>
+            <button onclick="location.reload()" style="background: #c62828; margin-top: 10px;">🔄 Salir / Cerrar Sesión</button>
         </div>
     </div>
 
@@ -75,7 +78,7 @@
             </div>
 
             <div style="border: 1px solid #d7ccc8; padding: 15px; border-radius: 8px; background: #fffcf5; margin-bottom: 20px;">
-                <h4 style="margin: 0 0 15px 0; color: #8d6e63;">🛍️ Productos del Pedido</h4>
+                <h4 style="margin: 0 0 15px 0; color: #8d6e63;">🛍️ Productos </h4>
                 
                 <div id="contenedor-productos"></div> <button type="button" onclick="agregarFilaProducto()" 
                     style="background:#8d6e63; color: white; width: 100%; padding: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px;">
@@ -184,6 +187,34 @@
             color: #5d4037;
         }
     </style>
+
+    <div id="seccion-menu-reportes" style="display:none; text-align:center; max-width: 500px; margin: auto;">
+        <button onclick="navegar('menu')" style="margin-bottom: 20px; float: left;">← Volver</button>
+        <div style="clear: both;"></div>
+        
+        <h3 style="color: var(--primario-oscuro);">📊 Centro de Reportes</h3>
+        <p style="color: #666; font-style: italic; margin-bottom: 25px;">Selecciona el análisis que deseas consultar</p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 10px;">
+            <button onclick="alert('Próximamente: Reporte de Ventas')" 
+                style="display: flex; flex-direction: column; padding: 20px; background: white; color: #5d4037; border: 2px solid #d7ccc8;">
+                <span style="font-size: 2em; margin-bottom: 10px;">📅</span>
+                Ventas Mensuales
+            </button>
+
+            <button onclick="alert('Próximamente: Stock de Productos')" 
+                style="display: flex; flex-direction: column; padding: 20px; background: white; color: #5d4037; border: 2px solid #d7ccc8;">
+                <span style="font-size: 2em; margin-bottom: 10px;">🧸</span>
+                Top Productos
+            </button>
+
+            <button onclick="alert('Próximamente: Ganancia obtenida')" 
+                style="display: flex; flex-direction: column; padding: 20px; background: white; color: #5d4037; border: 2px solid #d7ccc8;">
+                <span style="font-size: 2em; margin-bottom: 10px;">💸</span>
+                Cuentas por Cobrar
+            </button>
+        </div>
+    </div>
 
 </body>
 </html>

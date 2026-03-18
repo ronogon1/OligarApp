@@ -664,13 +664,14 @@ document.getElementById('formVentas').onsubmit = async (e) => {
 // ==========================================
 
 async function refrescarTablasManual() {
-    // 1. Preparamos el escenario (mostramos los DIVs)
-    navegar('consulta-tablas'); 
     
-    // 2. Traemos los datos (Conexión)
+    // Esta función SOLO se encarga de traer datos y dibujar.
+        document.getElementById('mensaje').innerText = "Actualizando datos...";
+
+    // 2. Traemos los datos
     const datosRecienLlegados = await leerExcel(); 
     
-    // 3. Mandamos a dibujar cada tabla por separado
+    // 3. Dibujamos
     if (datosRecienLlegados.TFacturas) {
         mostrarEnPantalla('TFacturas', datosRecienLlegados.TFacturas);
     }
@@ -1196,11 +1197,15 @@ async function cambiarEstadoFactura(id, nuevoEstado) {
 
         if (resp.ok) {
             alert(`Éxito: Factura ${id} ahora está ${estadoFinal}`);
-            // Recargamos la previsualización y las tablas para refrescar la vista
-            if (typeof previsualizarFactura === 'function') previsualizarFactura(id);
-            if (typeof refrescarTablasManual === 'function') refrescarTablasManual();
-        } else {
-            alert("Error al guardar en Excel. Revisa la conexión.");
+            
+            // Actualizamos la previsualización inmediatamente (se queda en la misma pantalla)
+            await previsualizarFactura(id);
+
+            // Si quieres que las tablas se actualicen "por debajo" sin moverte de pantalla:
+            // Llamamos a leerExcel directamente para refrescar la memoria global
+            await leerExcel(); 
+            
+            console.log("Datos actualizados silenciosamente.");
         }
 
     } catch (e) {

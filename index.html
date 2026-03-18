@@ -48,7 +48,7 @@
             </button>
 
             <button onclick="location.reload()" class="btn-negativo" style="grid-column: span 2; margin-top: 10px;">
-                🔄 Cerrar Sesión / Recargar
+                🔄 Cerrar Sesión
             </button>
         </div>
     </div>
@@ -136,9 +136,11 @@
         </div>
     </div>
 
-    <div id="modal-factura" style="display:none;">
+    <div id="modal-factura">
         <div id="area-impresion">
-            <div id="detalle-factura"></div>
+            <div id="detalle-factura">
+                </div>
+            
             <div class="ocultar-impresion" style="margin-top:30px; text-align:center; display:flex; justify-content:center; gap:10px;">
                 <button onclick="window.print()" class="btn-enfoque">🖨️ Imprimir</button>
                 <button onclick="document.getElementById('modal-factura').style.display='none'" class="btn-normal">Cerrar</button>

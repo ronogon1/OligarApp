@@ -117,60 +117,66 @@ th, td {
 }
 
 /* ============================================================
-   MURO DE CONTENCIÓN ABSOLUTO PARA LA FACTURA
+   ESTILOS DEL MODAL (VENTANA FLOTANTE)
+   ============================================================ */
+#modal-factura {
+    display: none; 
+    position: fixed; 
+    top: 0; left: 0; 
+    width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.7); /* Fondo oscuro semitransparente */
+    z-index: 9999; 
+    overflow-y: auto;
+    padding: 20px 0;
+}
+
+/* El contenedor blanco de la factura */
+#area-impresion {
+    background: white; 
+    width: 90%; 
+    max-width: 700px; 
+    margin: auto; 
+    padding: 40px; 
+    border-radius: 15px; 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    position: relative;
+}
+
+/* ============================================================
+   EL "MURO" DEFINITIVO: PROTECCIÓN TOTAL A LA FACTURA
    ============================================================ */
 
-/* 1. Reset Radical: Forzamos a que nada del CSS anterior entre aquí */
-#area-impresion, 
-#area-impresion div, 
-#area-impresion table, 
-#area-impresion tr, 
-#area-impresion td, 
-#area-impresion th, 
-#area-impresion span, 
-#area-impresion p,
-#area-impresion h1,
-#area-impresion h2,
-#area-impresion h3 {
-    all: revert !important; /* Devuelve al estado original del navegador */
-    box-sizing: content-box !important; /* El estándar antiguo que suelen usar las facturas */
-    background: none !important;
-    color: black !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    margin: 0;
-    padding: 0;
+/* Esta regla impide que los estilos de la App afecten a la factura */
+#area-impresion * {
+    all: revert; /* Devuelve cada elemento a como estaba antes del CSS */
 }
 
-/* 2. Re-aplicamos lo básico para que no se vea "rota", solo "original" */
-#area-impresion {
-    background-color: white !important;
-    width: 100% !important;
-    max-width: 800px !important; /* Ajusta según el ancho de tu factura original */
-    margin: 0 auto !important;
-    font-family: 'Courier New', Courier, monospace !important; /* O la que usaras */
-}
+/* Aseguramos que el logo y textos mantengan su alineación original */
+#area-impresion img { max-width: 100%; height: auto; }
+#area-impresion center { text-align: center; }
 
-/* 3. Aseguramos que las tablas de la factura no hereden el Mauve Bark */
+/* Quitamos los bordes de Excel que aparecieron en las tablas */
 #area-impresion table {
+    border: none !important;
     border-collapse: collapse !important;
-    width: 100% !important;
 }
 
-#area-impresion thead tr {
-    background-color: transparent !important; /* Quitamos el café de la App */
-    color: black !important;
+#area-impresion td, #area-impresion th {
+    border: none !important; /* Aquí es donde quitamos las líneas tipo Excel */
 }
 
-#area-impresion th, #area-impresion td {
-    border: 1px solid black !important; /* O como la tuvieras */
-}
-
-/* 4. El comando de impresión definitivo */
+/* ============================================================
+   ESTILOS DE IMPRESIÓN
+   ============================================================ */
 @media print {
-    body * { display: none !important; } /* Escondemos TODO */
-    #modal-factura, #area-impresion, #area-impresion * { 
-        display: block !important; 
-        visibility: visible !important; 
+    body * { visibility: hidden; }
+    #area-impresion, #area-impresion * { visibility: visible; }
+    #area-impresion {
+        position: absolute;
+        left: 0; top: 0;
+        width: 100% !important;
+        box-shadow: none !important;
+        padding: 0;
     }
+    .ocultar-impresion { display: none !important; }
 }

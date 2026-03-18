@@ -799,9 +799,9 @@ function generarFactura(d) {
 
             <table style="width:100%; border-collapse:collapse;">
                 <thead>
-                    <tr style="background:#f9f9f9;">
-                        <th style="text-align:left; padding:10px; border-bottom:3px solid #5D4037;">Producto</th>
-                        <th style="text-align:right; padding:10px; border-bottom:3px solid #5D4037;">Subtotal</th>
+                    <tr style="background:#D7CCC8;">
+                        <th style="text-align:left; padding:10px; border-bottom:5px solid #5D4037;">Producto</th>
+                        <th style="text-align:right; padding:10px; border-bottom:5px solid #5D4037;">Subtotal</th>
                     </tr>
                 </thead>
                 <tbody>

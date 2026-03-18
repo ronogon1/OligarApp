@@ -773,10 +773,12 @@ function generarFactura(d) {
         <div style="color:#444; font-size: 14px; font-family: sans-serif;">
             
             <div style="display: flex; align-items: center; margin-bottom: 20px;">
-                <div style="flex: 0 0 100px;">
-                    <img src="logo_oligar.png" style="width: 120px; height: auto;">
+                <div style="flex: 0 0 130px; text-align: center;">
+                    <img src="logo_oligar.png" style="width: 140px; height: auto; display: block; margin: 0 auto;">
                 </div>
-                <div style="flex: 1; text-align: center; padding-right: 100px;"> <h1 style="margin: 0; color: #5d4037; letter-spacing: 2px; font-size: 24px;">OLIGAR CROCHET</h1>
+                
+                <div style="flex: 1; text-align: center; padding-right: 130px;"> 
+                    <h1 style="margin: 0; color: #5d4037; letter-spacing: 2px; font-size: 24px;">OLIGAR CROCHET</h1>
                     <i style="color: #8d6e63; font-size: 16px;">"Creando con amor"</i>
                     <p style="margin: 5px 0 0; font-size: 15px; color: #333;">
                         Managua, Nicaragua | Celular: 7841 1119<br>

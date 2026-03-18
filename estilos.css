@@ -143,26 +143,51 @@ th, td {
 }
 
 /* ============================================================
-   EL "MURO" DEFINITIVO: PROTECCIÓN TOTAL A LA FACTURA
+   MURO DE CONTENCIÓN ABSOLUTO PARA LA FACTURA (VERSIÓN FINAL)
    ============================================================ */
 
-/* Esta regla impide que los estilos de la App afecten a la factura */
 #area-impresion * {
-    all: revert; /* Devuelve cada elemento a como estaba antes del CSS */
+    all: revert;
 }
 
-/* Aseguramos que el logo y textos mantengan su alineación original */
-#area-impresion img { max-width: 100%; height: auto; }
-#area-impresion center { text-align: center; }
+/* 1. Incremento del tamaño del logo */
+#area-impresion img[alt="Logo"] { 
+    max-width: 140px !important; /* Ajusta este valor si lo quieres aún más grande */
+    height: auto !important;
+}
 
-/* Quitamos los bordes de Excel que aparecieron en las tablas */
+/* 2. Línea gruesa debajo del encabezado de productos */
+/* Buscamos el bloque sombreado del encabezado */
+#area-impresion .encabezado-tabla, 
+#area-impresion tr[style*="background-color: #f2f2f2"] {
+    border-bottom: 2px solid #5D4037 !important; /* Línea gruesa Mauve Bark */
+}
+
+/* 3. Líneas tenues de división de productos */
 #area-impresion table {
-    border: none !important;
     border-collapse: collapse !important;
+    width: 100% !important;
 }
 
-#area-impresion td, #area-impresion th {
-    border: none !important; /* Aquí es donde quitamos las líneas tipo Excel */
+#area-impresion tr {
+    border-bottom: 1px solid #E0E0E0 !important; /* Línea tenue gris */
+}
+
+/* Quitamos la línea al último elemento para que no choque con el total */
+#area-impresion tr:last-child {
+    border-bottom: none !important;
+}
+
+/* Mantenemos el reset de bordes de Excel que no queremos */
+#area-impresion th, #area-impresion td {
+    border: none !important; 
+    padding: 8px 4px !important;
+}
+
+/* Aseguramos que las imágenes de los amigurumis no se descontrolen */
+#area-impresion .grid-imagenes img {
+    max-width: 100% !important;
+    border-radius: 8px !important;
 }
 
 /* ============================================================

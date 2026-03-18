@@ -1,17 +1,25 @@
 /* ============================================================
-   PALETA DE COLORES OFICIAL - OLIGAR CROCHET 
+   PALETA DE COLORES ACTUALIZADA - OLIGAR CROCHET (Lila & Rose)
    ============================================================ */
 :root {
-    --fondo-general: #FFFCF5;        /* Floral White - Fondo App */
+    /* FONDOS (Suavidad y Protagonismo Pastel) */
+    --fondo-general: #FFF9FB;        /* Blanco con un toque de rosa */
+    --soft-lilac: #F3E5F5;           /* Lila muy pálido para secciones */
+    --white: #FFFFFF;
+
+    /* COLORES DE IDENTIDAD (El nuevo protagonismo femenino) */
+    --deep-lilac: #9575CD;           /* Lila vibrante: Botones principales y Buscar */
+    --dusty-rose: #D81B60;           /* Rosa viejo: Acciones importantes/Negativas */
+    --orchid-light: #E1BEE7;         /* Orquídea claro: Decoración y Hover */
+    
+    /* EL ANCLA PROFESIONAL (El café como soporte elegante) */
     --mauve-bark: #5D4037;           /* Texto Principal y Títulos */
-    --dust-grey: #D7CCC8;            /* Botones Base y Bordes */
-    --medium-jungle: #4CAF50;        /* Botones de Confirmación */
-    --light-green: #B3FFB3;          /* Mensajes de Éxito / Activo */
-    --oxblood: #950000;              /* Acciones Negativas / Anulado */
-    --cotton-rose: #F4C7C3;          /* Mensajes de Error / Fondo Anulado */
-    --fresh-sky: #46B1E1;            /* Botones de Enfoque / Buscar */
-    --deep-lilac: #7E57C2;           /* Líneas Decorativas 2 */
-    --thistle: #D1C4E9;              /* Fondos Decorativos / Activa */
+    --dust-grey: #D7CCC8;            /* Bordes finos y detalles artesanales */
+
+    /* ESTADOS */
+    --success-mint: #E8F5E9;         /* Verde menta suave para Éxito */
+    --medium-jungle: #66BB6A;        /* Verde para Guardar/Confirmar */
+    --error-blush: #FFEBEE;          /* Rosa rojizo para Errores */
 }
 
 /* ============================================================
@@ -27,18 +35,18 @@ body {
 
 /* Tarjetas y Contenedores */
 .tarjeta, div[id^="seccion-"] {
-    background: #FFFFFF;
-    border: 1px solid var(--dust-grey);
+    background: var(--white);
+    border: 1px solid var(--orchid-light); /* Borde sutil en lila */
     border-radius: 12px;
     padding: 25px;
     margin-bottom: 25px;
-    box-shadow: 0 4px 10px rgba(93, 64, 55, 0.08);
+    box-shadow: 0 4px 15px rgba(149, 117, 205, 0.1); /* Sombra con tinte lila */
 }
 
-/* Títulos con Línea Decorativa 1 (Mauve Bark) */
+/* Títulos con Línea Decorativa (Mauve Bark para elegancia) */
 h1, h2, h3, h4 {
     color: var(--mauve-bark);
-    border-bottom: 3px solid var(--mauve-bark);
+    border-bottom: 3px solid var(--deep-lilac); /* Línea ahora en Lila */
     padding-bottom: 8px;
     margin-top: 0;
     text-transform: uppercase;
@@ -46,14 +54,14 @@ h1, h2, h3, h4 {
 }
 
 /* ============================================================
-   BOTONES (Basados en Cuadro de Muestras) 
+   BOTONES (Rediseñados para la nueva estética) 
    ============================================================ */
 
-/* Botón General (Muestra 1) */
+/* Botón Normal / Navegación */
 button, .btn-normal {
-    background-color: var(--dust-grey);
+    background-color: var(--soft-lilac);
     color: var(--mauve-bark);
-    border: 1px solid var(--mauve-bark);
+    border: 1px solid var(--deep-lilac);
     padding: 10px 20px;
     border-radius: 8px;
     font-weight: bold;
@@ -61,31 +69,32 @@ button, .btn-normal {
     transition: all 0.2s ease;
 }
 
-/* Botón de Confirmación (Muestra 2) */
-.btn-confirmar, button[type="submit"] {
-    background-color: var(--medium-jungle);
-    color: #FFFFFF;
-    border: 2px solid var(--light-green);
-}
-
-/* Botón de Acción Negativa (Muestra 2) */
-.btn-negativo {
-    background-color: var(--oxblood);
-    color: var(--cotton-rose);
-    border: 2px solid #FFFFFF;
-}
-
-/* Botón de Enfoque (Muestra 1) */
+/* Botón de Enfoque / Buscar (Ahora en Deep Lilac) */
 .btn-enfoque {
-    background-color: var(--fresh-sky);
-    color: #FFFFFF;
-    border: none;
-    box-shadow: 0 2px 4px rgba(70, 177, 225, 0.3);
+    background-color: var(--deep-lilac) !important;
+    color: var(--white) !important;
+    border: none !important;
+    box-shadow: 0 2px 6px rgba(149, 117, 205, 0.4);
+}
+
+/* Botón de Confirmación / Guardar */
+.btn-confirmar, button[type="submit"] {
+    background-color: var(--medium-jungle) !important;
+    color: var(--white) !important;
+    border: 1px solid var(--success-mint) !important;
+}
+
+/* Botón de Acción Negativa / Cerrar (Rosa Viejo en lugar de Rojo sangre) */
+.btn-negativo {
+    background-color: var(--dusty-rose) !important;
+    color: var(--white) !important;
+    border: none !important;
 }
 
 button:hover {
-    filter: brightness(0.9);
+    filter: brightness(0.95);
     transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 /* ============================================================
@@ -95,25 +104,32 @@ table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 15px;
+    background-color: var(--white);
 }
 
 thead tr {
-    background-color: var(--mauve-bark);
-    color: var(--fondo-general);
+    background-color: var(--deep-lilac); /* Encabezados en Lila */
+    color: var(--white);
 }
 
 th, td {
     padding: 12px;
-    border: 1px solid var(--dust-grey);
+    border: 1px solid var(--soft-lilac);
     text-align: center;
+}
+
+/* Filas alternas para lectura fácil */
+tbody tr:nth-child(even) {
+    background-color: var(--fondo-general);
 }
 
 /* Pill de Estados */
 .estado-pill {
-    padding: 4px 12px;
+    padding: 6px 14px;
     border-radius: 20px;
     font-weight: bold;
     font-size: 0.85em;
+    text-transform: uppercase;
 }
 
 /* ============================================================
@@ -177,7 +193,7 @@ th, td {
 /* 3. Limpieza de bordes y padding */
 #area-impresion th, #area-impresion td {
     border: none !important; 
-    padding: 8px 4px !important;
+    padding: 10px 5px !important;
 }
 
 /* 4. Quitamos la línea SOLO a la última fila del cuerpo para no chocar con totales */
@@ -189,7 +205,7 @@ th, td {
 /* Aseguramos que las imágenes de los amigurumis no se descontrolen */
 #area-impresion .grid-imagenes img {
     max-width: 100% !important;
-    border-radius: 8px !important;
+    border-radius: 10px !important;
 }
 
 /* ============================================================

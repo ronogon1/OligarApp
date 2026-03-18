@@ -283,21 +283,21 @@ function renderizarReporteVentas(filas) {
     const contenedor = document.getElementById('lista-facturas-reporte');
     if (!contenedor) return;
 
-    // Calculamos el total de ventas (solo de las que no están anuladas para un cierre real)
-    const totalGeneral = filas.reduce((acc, f) => {
-        return f[6] !== 'Anulada' ? acc + parseFloat(f[5] || 0) : acc;
-    }, 0);
+    // CÁLCULO TOTAL: Suma directa de la columna 'Total' (f[5]) de todo lo que pasó el filtro
+    const totalGeneral = filas.reduce((acc, f) => acc + (parseFloat(f[5]) || 0), 0);
 
     contenedor.innerHTML = `
-        <div style="background: #e8f5e9; padding: 15px; border-radius: 5px; margin-bottom: 15px; text-align: right; border-left: 5px solid #2e7d32;">
-            <span style="color: #666; font-size: 0.9em;">Total Ventas:</span><br>
-            <strong style="font-size: 1.4em; color: #2e7d32;">C$ ${totalGeneral.toLocaleString('en-US', {minimumFractionDigits: 2})}</strong>
+        <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: right; border-left: 5px solid #ef6c00; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <span style="color: #6d4c41; font-size: 0.9em; font-weight: bold;">TOTAL SELECCIONADO (Suma de columna Total):</span><br>
+            <strong style="font-size: 1.6em; color: #d84315;">C$ ${totalGeneral.toLocaleString('en-US', {minimumFractionDigits: 2})}</strong>
+            <p style="margin: 5px 0 0 0; font-size: 0.75em; color: #8d6e63;">* Representa la suma exacta de las ${filas.length} facturas mostradas abajo.</p>
         </div>
+
         <div style="overflow-x: auto;">
-            <table class="tabla-consultas" style="width:100%; font-size: 0.8em; border-collapse: collapse;">
+            <table class="tabla-consultas" style="width:100%; font-size: 0.85em; border-collapse: collapse;">
                 <thead>
                     <tr style="background: #8d6e63; color: white;">
-                        <th>Factura N°</th>
+                        <th style="padding: 10px;">Factura N°</th>
                         <th>Fecha</th>
                         <th>Cliente</th>
                         <th>Subtotal</th>
@@ -310,44 +310,44 @@ function renderizarReporteVentas(filas) {
                 </thead>
                 <tbody>
                     ${filas.map(f => {
-                        // 1. Formateo de fecha
+                        // 1. Formateo de fecha usando tu función existente
                         const fechaObj = excelSerialToDate(f[1]);
-                        const fechaFormateada = `${String(fechaObj.getDate()).padStart(2,'0')}/${String(fechaObj.getMonth()+1).padStart(2,'0')}/${fechaObj.getFullYear()}`;
+                        const fechaFmt = `${String(fechaObj.getDate()).padStart(2,'0')}/${String(fechaObj.getMonth()+1).padStart(2,'0')}/${fechaObj.getFullYear()}`;
 
                         // 2. Valores numéricos
                         const envio = parseFloat(f[3] || 0);
                         const desc = parseFloat(f[4] || 0);
                         const totalf = parseFloat(f[5] || 0);
-                        const pagado = parseFloat(f[7] || 0); // Columna 'Pagado' en tu Excel
-                        const subtotal = totalf;
-
-                        // 3. LÓGICA DE ESTADOS DINÁMICOS
-                        let estadoReal = f[6]; // Valor que viene del Excel (Activa / Anulada)
+                        const pagado = parseFloat(f[7] || 0);
                         
+                        // Calculamos el subtotal base para que la fila cuadre visualmente: (Total - Envío + Descuento)
+                        const subtotalCalculado = totalf - envio + desc;
+
+                        // 3. Lógica de estados (Mantenemos tu lógica de Cancelada vs Activa)
+                        let estadoReal = f[6] || "Activa";
                         if (estadoReal !== 'Anulada') {
-                            // Si lo pagado es igual o mayor al total, está Cancelada
                             estadoReal = (pagado >= totalf && totalf > 0) ? 'Cancelada' : 'Activa';
                         }
 
-                        // 4. Estilos por estado
-                        let colorEstado = "#2e7d32"; // Verde para Cancelada
-                        if (estadoReal === 'Activa') colorEstado = "#f57c00"; // Naranja para pendiente
+                        // 4. Colores de estado
+                        let colorEstado = "#f57c00"; // Naranja (Activa)
+                        if (estadoReal === 'Cancelada') colorEstado = "#2e7d32"; // Verde
                         if (estadoReal === 'Anulada') colorEstado = "#d32f2f"; // Rojo
 
                         return `
-                        <tr style="${estadoReal === 'Anulada' ? 'text-decoration: line-through; color: #bbb;' : ''}">
-                            <td>${f[0]}</td>
-                            <td>${fechaFormateada}</td>
+                        <tr style="border-bottom: 1px solid #eee; ${estadoReal === 'Anulada' ? 'text-decoration: line-through; color: #bbb; background: #fafafa;' : ''}">
+                            <td style="padding: 10px; font-weight: bold;">${f[0]}</td>
+                            <td>${fechaFmt}</td>
                             <td style="text-align: left;">${f[2]}</td>
-                            <td>${subtotal.toFixed(2)}</td>
-                            <td>${envio.toFixed(2)}</td>
-                            <td>${desc.toFixed(2)}</td>
-                            <td style="font-weight: bold;">C$ ${totalf.toFixed(2)}</td>
+                            <td>${subtotalCalculado.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                            <td>${envio.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                            <td>${desc.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                            <td style="font-weight: bold; color: #333;">C$ ${totalf.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
                             <td>
-                                <span style="color: ${colorEstado}; font-weight: bold;">${estadoReal}</span>
+                                <span style="color: ${colorEstado}; font-weight: bold;">${estadoReal.toUpperCase()}</span>
                             </td>
                             <td>
-                                <button onclick="previsualizarFactura('${f[0]}')" style="padding: 4px 8px;">👁️</button>
+                                <button onclick="previsualizarFactura('${f[0]}')" style="padding: 4px 8px; cursor: pointer; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px;">👁️</button>
                             </td>
                         </tr>`;
                     }).join('')}

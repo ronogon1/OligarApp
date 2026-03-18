@@ -319,7 +319,7 @@ function renderizarReporteVentas(filas) {
                         const desc = parseFloat(f[4] || 0);
                         const totalf = parseFloat(f[5] || 0);
                         const pagado = parseFloat(f[7] || 0); // Columna 'Pagado' en tu Excel
-                        const subtotal = totalf - envio + desc;
+                        const subtotal = totalf;
 
                         // 3. LÓGICA DE ESTADOS DINÁMICOS
                         let estadoReal = f[6]; // Valor que viene del Excel (Activa / Anulada)

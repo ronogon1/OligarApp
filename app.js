@@ -780,14 +780,14 @@ function generarFactura(d) {
                 <div style="flex: 1; text-align: center; padding-right: 130px;"> 
                     <h1 style="margin: 0; color: #5d4037; letter-spacing: 2px; font-size: 24px;">OLIGAR CROCHET</h1>
                     <i style="color: #8d6e63; font-size: 16px;">"Creando con amor"</i>
-                    <p style="margin: 5px 0 0; font-size: 15px; color: #333;">
+                    <p style="margin: 5px 0 0; font-size: 15px; color: #7d57e2;">
                         Managua, Nicaragua | Celular: 7841 1119<br>
                         oligar.crochet@gmail.com
                     </p>
                 </div>
             </div>
 
-            <hr style="border: none; border-top: 2px solid #8d6e63; margin-bottom: 15px;">
+            <hr style="border: none; border-top: 2px solid #5D4037; margin-bottom: 15px;">
 
             <p><strong>Factura N°:</strong> ${d.Factura_ID} <span style="float:right;"><strong>Fecha:</strong> ${formatFechaDDMMYYYY(excelSerialToDate(d.Fecha))}</span></p>
             

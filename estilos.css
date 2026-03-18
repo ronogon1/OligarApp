@@ -1,0 +1,155 @@
+/* ============================================================
+   PALETA DE COLORES OFICIAL - OLIGAR CROCHET 
+   ============================================================ */
+:root {
+    --fondo-general: #FFFCF5;        /* Floral White - Fondo App */
+    --mauve-bark: #5D4037;           /* Texto Principal y Títulos */
+    --dust-grey: #D7CCC8;            /* Botones Base y Bordes */
+    --medium-jungle: #4CAF50;        /* Botones de Confirmación */
+    --light-green: #B3FFB3;          /* Mensajes de Éxito / Activo */
+    --oxblood: #950000;              /* Acciones Negativas / Anulado */
+    --cotton-rose: #F4C7C3;          /* Mensajes de Error / Fondo Anulado */
+    --fresh-sky: #46B1E1;            /* Botones de Enfoque / Buscar */
+    --deep-lilac: #7E57C2;           /* Líneas Decorativas 2 */
+    --thistle: #D1C4E9;              /* Fondos Decorativos / Activa */
+}
+
+/* ============================================================
+   ESTILOS BASE DE LA APP 
+   ============================================================ */
+body {
+    background-color: var(--fondo-general);
+    color: var(--mauve-bark);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+}
+
+/* Tarjetas y Contenedores */
+.tarjeta, div[id^="seccion-"] {
+    background: #FFFFFF;
+    border: 1px solid var(--dust-grey);
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 10px rgba(93, 64, 55, 0.08);
+}
+
+/* Títulos con Línea Decorativa 1 (Mauve Bark) */
+h1, h2, h3, h4 {
+    color: var(--mauve-bark);
+    border-bottom: 3px solid var(--mauve-bark);
+    padding-bottom: 8px;
+    margin-top: 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ============================================================
+   BOTONES (Basados en Cuadro de Muestras) 
+   ============================================================ */
+
+/* Botón General (Muestra 1) */
+button, .btn-normal {
+    background-color: var(--dust-grey);
+    color: var(--mauve-bark);
+    border: 1px solid var(--mauve-bark);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* Botón de Confirmación (Muestra 2) */
+.btn-confirmar, button[type="submit"] {
+    background-color: var(--medium-jungle);
+    color: #FFFFFF;
+    border: 2px solid var(--light-green);
+}
+
+/* Botón de Acción Negativa (Muestra 2) */
+.btn-negativo {
+    background-color: var(--oxblood);
+    color: var(--cotton-rose);
+    border: 2px solid #FFFFFF;
+}
+
+/* Botón de Enfoque (Muestra 1) */
+.btn-enfoque {
+    background-color: var(--fresh-sky);
+    color: #FFFFFF;
+    border: none;
+    box-shadow: 0 2px 4px rgba(70, 177, 225, 0.3);
+}
+
+button:hover {
+    filter: brightness(0.9);
+    transform: translateY(-2px);
+}
+
+/* ============================================================
+   TABLAS Y REPORTES 
+   ============================================================ */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+
+thead tr {
+    background-color: var(--mauve-bark);
+    color: var(--fondo-general);
+}
+
+th, td {
+    padding: 12px;
+    border: 1px solid var(--dust-grey);
+    text-align: center;
+}
+
+/* Pill de Estados */
+.estado-pill {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 0.85em;
+}
+
+/* ============================================================
+   BLOQUE DE PROTECCIÓN A LA FACTURA (INTOCABLE) 
+   ============================================================ */
+
+/* 1. Protección en Pantalla: Evita que el CSS de la App se filtre */
+#modal-factura, #area-impresion, #area-impresion * {
+    all: initial; /* Resetea todas las propiedades a sus valores de fábrica */
+    box-sizing: border-box;
+    font-family: Arial, sans-serif; /* Ajusta a la fuente que usas en tu factura */
+}
+
+#area-impresion {
+    display: block;
+    background: white;
+    color: black;
+    padding: 0;
+    margin: 0 auto;
+}
+
+/* 2. Protección en Impresión: Garantiza fidelidad total */
+@media print {
+    body * {
+        visibility: hidden; /* Oculta todo el resto de la App */
+    }
+    #modal-factura, #area-impresion, #area-impresion * {
+        visibility: visible; /* Solo muestra la factura */
+    }
+    #area-impresion {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+    .ocultar-impresion {
+        display: none !important; /* Esconde botones de 'Cerrar' o 'Imprimir' */
+    }
+}

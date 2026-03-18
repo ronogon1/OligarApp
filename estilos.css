@@ -117,39 +117,60 @@ th, td {
 }
 
 /* ============================================================
-   BLOQUE DE PROTECCIÓN A LA FACTURA (INTOCABLE) 
+   MURO DE CONTENCIÓN ABSOLUTO PARA LA FACTURA
    ============================================================ */
 
-/* 1. Protección en Pantalla: Evita que el CSS de la App se filtre */
-#modal-factura, #area-impresion, #area-impresion * {
-    all: initial; /* Resetea todas las propiedades a sus valores de fábrica */
-    box-sizing: border-box;
-    font-family: Arial, sans-serif; /* Ajusta a la fuente que usas en tu factura */
-}
-
-#area-impresion {
-    display: block;
-    background: white;
-    color: black;
+/* 1. Reset Radical: Forzamos a que nada del CSS anterior entre aquí */
+#area-impresion, 
+#area-impresion div, 
+#area-impresion table, 
+#area-impresion tr, 
+#area-impresion td, 
+#area-impresion th, 
+#area-impresion span, 
+#area-impresion p,
+#area-impresion h1,
+#area-impresion h2,
+#area-impresion h3 {
+    all: revert !important; /* Devuelve al estado original del navegador */
+    box-sizing: content-box !important; /* El estándar antiguo que suelen usar las facturas */
+    background: none !important;
+    color: black !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0;
     padding: 0;
-    margin: 0 auto;
 }
 
-/* 2. Protección en Impresión: Garantiza fidelidad total */
+/* 2. Re-aplicamos lo básico para que no se vea "rota", solo "original" */
+#area-impresion {
+    background-color: white !important;
+    width: 100% !important;
+    max-width: 800px !important; /* Ajusta según el ancho de tu factura original */
+    margin: 0 auto !important;
+    font-family: 'Courier New', Courier, monospace !important; /* O la que usaras */
+}
+
+/* 3. Aseguramos que las tablas de la factura no hereden el Mauve Bark */
+#area-impresion table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+}
+
+#area-impresion thead tr {
+    background-color: transparent !important; /* Quitamos el café de la App */
+    color: black !important;
+}
+
+#area-impresion th, #area-impresion td {
+    border: 1px solid black !important; /* O como la tuvieras */
+}
+
+/* 4. El comando de impresión definitivo */
 @media print {
-    body * {
-        visibility: hidden; /* Oculta todo el resto de la App */
-    }
-    #modal-factura, #area-impresion, #area-impresion * {
-        visibility: visible; /* Solo muestra la factura */
-    }
-    #area-impresion {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-    }
-    .ocultar-impresion {
-        display: none !important; /* Esconde botones de 'Cerrar' o 'Imprimir' */
+    body * { display: none !important; } /* Escondemos TODO */
+    #modal-factura, #area-impresion, #area-impresion * { 
+        display: block !important; 
+        visibility: visible !important; 
     }
 }

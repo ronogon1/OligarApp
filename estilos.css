@@ -142,6 +142,7 @@ th, td {
     position: relative;
 }
 
+
 /* ============================================================
    MURO DE CONTENCIÓN ABSOLUTO PARA LA FACTURA (VERSIÓN FINAL)
    ============================================================ */
@@ -152,36 +153,37 @@ th, td {
 
 /* 1. Incremento del tamaño del logo */
 #area-impresion img[alt="Logo"] { 
-    max-width: 140px !important; /* Ajusta este valor si lo quieres aún más grande */
+    max-width: 140px !important; 
     height: auto !important;
 }
 
-/* 2. Línea gruesa debajo del encabezado de productos */
-/* Buscamos el bloque sombreado del encabezado */
-#area-impresion .encabezado-tabla, 
-#area-impresion tr[style*="background-color: #f2f2f2"] {
-    border-bottom: 2px solid #5D4037 !important; /* Línea gruesa Mauve Bark */
-}
-
-/* 3. Líneas tenues de división de productos */
+/* 2. Configuración de la Tabla de Productos */
 #area-impresion table {
     border-collapse: collapse !important;
     width: 100% !important;
+    border: none !important;
 }
 
+/* Líneas tenues generales para todas las filas de la tabla */
 #area-impresion tr {
-    border-bottom: 1px solid #E0E0E0 !important; /* Línea tenue gris */
+    border-bottom: 1px solid #E0E0E0 !important;
 }
 
-/* Quitamos la línea al último elemento para que no choque con el total */
-#area-impresion tr:last-child {
-    border-bottom: none !important;
+/* LÍNEA GRUESA: Forzamos el borde grueso específicamente en el encabezado (thead) */
+#area-impresion thead tr {
+    border-bottom: 3px solid #5D4037 !important; /* Color Mauve Bark oficial */
 }
 
-/* Mantenemos el reset de bordes de Excel que no queremos */
+/* 3. Limpieza de bordes y padding */
 #area-impresion th, #area-impresion td {
     border: none !important; 
     padding: 8px 4px !important;
+}
+
+/* 4. Quitamos la línea SOLO a la última fila del cuerpo para no chocar con totales */
+/* Importante: usamos 'tbody tr' para no afectar al encabezado 'thead' */
+#area-impresion tbody tr:last-child {
+    border-bottom: none !important;
 }
 
 /* Aseguramos que las imágenes de los amigurumis no se descontrolen */

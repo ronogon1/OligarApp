@@ -190,6 +190,60 @@
         </div>
     </div>
 
+    <div class="tarjeta" id="formulario-costos-post">
+        <h3>💰 Registro de Costos de Producción</h3>
+        <div class="campo-busqueda" style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <input type="text" id="busqueda_factura_costos" placeholder="Ingrese Factura N° (ej: 20260001)" class="input-app">
+            <button class="btn-enfoque" onclick="buscarProductosFactura()">Buscar</button>
+        </div>
+
+        <div id="lista-productos-costos" style="display: none;">
+            <table id="tabla-carga-costos">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Mano de Obra (Unit)</th>
+                        <th>Materiales (Unit)</th>
+                    </tr>
+                </thead>
+                <tbody id="body-costos">
+                    </tbody>
+            </table>
+            <div style="text-align: right; margin-top: 15px;">
+                <button class="btn-confirmar" onclick="guardarCostosExcel()">Actualizar TCostos</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="tarjeta" id="formulario-envios-post">
+        <h3>🚚 Gestión de Envíos y Logística</h3>
+        
+        <div class="campo">
+            <label>Factura N°:</label>
+            <input type="text" id="envio_id_factura" class="input-app" readonly>
+        </div>
+
+        <div style="background: var(--soft-lilac); padding: 15px; border-radius: 8px; margin: 10px 0;">
+            <h4>📍 Coordenadas de Entrega</h4>
+            <input type="text" id="coordenada_nueva" placeholder="Pegar enlace de Maps o Coordenadas" class="input-app">
+            <div id="selector-direcciones" style="margin-top:10px;">
+                <small>¿En qué espacio desea guardar esta ubicación?</small><br>
+                <input type="radio" name="dir" value="1"> Dir 1 | 
+                <input type="radio" name="dir" value="2"> Dir 2 | 
+                <input type="radio" name="dir" value="3"> Dir 3
+            </div>
+        </div>
+
+        <div class="campo">
+            <label>Monto pagado por envío (C$):</label>
+            <input type="number" id="monto_envio_pago" class="input-app" placeholder="Monto que sale del negocio">
+            <small>*Este valor llenará la columna G de TGanancia</small>
+        </div>
+
+        <button class="btn-confirmar" style="width: 100%;" onclick="procesarEnvio()">Programar y Guardar</button>
+    </div>
+
+
     <p id="mensaje" style="text-align: center; font-size: 0.8em; margin-top: 20px; color: var(--mauve-bark);">Estado: Desconectado</p>
     
     <script src="app.js"></script>

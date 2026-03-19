@@ -1216,6 +1216,30 @@ async function cambiarEstadoFactura(id, nuevoEstado) {
 }
 
 
+async function cargarDatosParaEdicion() {
+    const idBusqueda = document.getElementById('input_factura_id').value;
+    
+    // Llamada al Excel para obtener la "foto" actual de esa factura
+    const datos = await buscarEnExcel(idBusqueda); 
+
+    // Llenar el formulario de envíos con lo que ya existe
+    document.getElementById('envio_actual').value = datos.ganancia.costo_envio;
+    // ... lógica para mostrar las direcciones del cliente ...
+}
+
+
+function validarDireccion(numeroDireccion) {
+    const valorActual = datosCliente[`Direccion_Envio${numeroDireccion}`];
+    
+    if (valorActual && valorActual !== "") {
+        const confirmar = confirm(`La Dirección ${numeroDireccion} ya tiene datos: "${valorActual}". ¿Deseas reemplazarla?`);
+        if (!confirmar) return; // Se cancela la operación
+    }
+    // Si está vacía o aceptó reemplazar, procedemos a guardar
+    guardarNuevaCoordenada(numeroDireccion);
+}
+
+
 function limpiarYRegresar() {
     const form = document.getElementById('formVentas');
     

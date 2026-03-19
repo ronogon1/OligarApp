@@ -67,7 +67,9 @@ function navegar(pantalla) {
         'seccion-registro-ventas', 
         'seccion-gestion-facturas',
         'seccion-menu-reportes',
-        'seccion-pantalla-reporte-ventas'
+        'seccion-pantalla-reporte-ventas',
+        'seccion-carga-costos',
+        'seccion-programar-envio'
     ];
 
     // 1. Limpieza de encabezados de edición

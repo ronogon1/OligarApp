@@ -5,9 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Oligar App - Gestión de Crochet</title>
-    
     <link rel="stylesheet" href="estilos.css">
-    
     <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
 </head>
 
@@ -28,23 +26,27 @@
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 500px; margin: auto;">
             <button onclick="navegar('registro-ventas')" class="btn-normal" style="height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                <span style="font-size: 2em;">🛍️</span>
-                Nueva Venta
+                <span style="font-size: 2em;">🛍️</span> Nueva Venta
             </button>
 
             <button onclick="navegar('gestion-facturas')" class="btn-normal" style="height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                <span style="font-size: 2em;">⚙️</span>
-                Gestionar Facturas
+                <span style="font-size: 2em;">⚙️</span> Gestionar Facturas
+            </button>
+
+            <button onclick="navegar('carga-costos')" class="btn-normal" style="height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <span style="font-size: 2em;">💰</span> Cargar Costos
+            </button>
+
+            <button onclick="navegar('programar-envio')" class="btn-normal" style="height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <span style="font-size: 2em;">🚚</span> Programar Envío
             </button>
 
             <button onclick="navegar('menu-reportes')" class="btn-normal" style="height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                <span style="font-size: 2em;">📊</span>
-                Reportes
+                <span style="font-size: 2em;">📊</span> Reportes
             </button>
 
             <button onclick="navegar('consulta-tablas')" class="btn-normal" style="height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                <span style="font-size: 2em;">📋</span>
-                Ver Tablas
+                <span style="font-size: 2em;">📋</span> Ver Tablas
             </button>
 
             <button onclick="location.reload()" class="btn-negativo" style="grid-column: span 2; margin-top: 10px;">
@@ -104,20 +106,69 @@
         </form>
     </div>
 
+    <div id="seccion-carga-costos" style="display:none; max-width: 600px; margin: auto;">
+        <button onclick="navegar('menu')" class="btn-normal" style="margin-bottom: 20px;">← Volver</button>
+        <div class="tarjeta" id="formulario-costos-post">
+            <h3>💰 Registro de Costos de Producción</h3>
+            <div class="campo-busqueda" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <input type="text" id="busqueda_factura_costos" placeholder="Ingrese Factura N°" class="input-app" style="flex:1">
+                <button class="btn-enfoque" onclick="buscarProductosFactura()">Buscar</button>
+            </div>
+            <div id="lista-productos-costos" style="display: none;">
+                <table id="tabla-carga-costos">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>MO (Unit)</th>
+                            <th>Materiales (Unit)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="body-costos"></tbody>
+                </table>
+                <div style="text-align: right; margin-top: 15px;">
+                    <button class="btn-confirmar" onclick="guardarCostosExcel()">Actualizar TCostos</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="seccion-programar-envio" style="display:none; max-width: 600px; margin: auto;">
+        <button onclick="navegar('menu')" class="btn-normal" style="margin-bottom: 20px;">← Volver</button>
+        <div class="tarjeta" id="formulario-envios-post">
+            <h3>🚚 Gestión de Envíos y Logística</h3>
+            <div class="campo" style="margin-bottom: 15px;">
+                <label>Factura N°:</label>
+                <input type="text" id="envio_id_factura" class="input-app" placeholder="ID de factura">
+            </div>
+            <div style="background: var(--soft-lilac); padding: 15px; border-radius: 8px; margin: 10px 0;">
+                <h4>📍 Coordenadas de Entrega</h4>
+                <input type="text" id="coordenada_nueva" placeholder="Enlace de Maps o Coordenadas" class="input-app" style="width:100%; margin-bottom:10px;">
+                <div id="selector-direcciones">
+                    <small>¿Dónde guardar esta ubicación?</small><br>
+                    <input type="radio" name="dir" value="1"> Dir 1 | 
+                    <input type="radio" name="dir" value="2"> Dir 2 | 
+                    <input type="radio" name="dir" value="3"> Dir 3
+                </div>
+            </div>
+            <div class="campo">
+                <label>Monto pagado por envío (C$):</label>
+                <input type="number" id="monto_envio_pago" class="input-app" style="width:100%">
+            </div>
+            <button class="btn-confirmar" style="width: 100%; margin-top:20px;" onclick="procesarEnvio()">Programar y Guardar</button>
+        </div>
+    </div>
+
     <div id="seccion-gestion-facturas" style="display:none; max-width: 700px; margin: auto;">
         <button type="button" onclick="limpiarYRegresar()" class="btn-normal" style="margin-bottom: 20px;">← Volver</button>
         <h3>Gestión de Facturas</h3>
-        
         <div style="display:flex; gap:10px; margin-bottom:20px;">
             <input type="text" id="busqueda_factura" placeholder="ID de Factura..." style="flex:1;">
             <button onclick="previsualizarFactura()" class="btn-enfoque">🔍 Cargar</button>
         </div>
-
         <div id="panel-previsualizacion" style="display:none;" class="tarjeta">
             <div id="status-badge" style="text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 2px solid var(--dust-grey);">
                 <strong>ESTADO:</strong> <span id="txt-status">---</span>
             </div>
-
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                 <div><strong>Cliente:</strong><input type="text" id="pre_cliente" disabled style="width:100%;"></div>
                 <div><strong>Fecha:</strong><input type="text" id="pre_fecha" disabled style="width:100%;"></div>
@@ -126,7 +177,6 @@
                 <div><strong>Pagado:</strong><input type="text" id="pre_pagado" disabled style="width:100%; color: var(--medium-jungle);"></div>
                 <div><strong>Saldo:</strong><input type="text" id="pre_saldo" disabled style="width:100%;"></div>
             </div>
-
             <div style="display:flex; gap:10px; justify-content: center; border-top: 1px solid var(--dust-grey); padding-top: 15px;">
                 <button id="btn-pre-editar" class="btn-normal">✏️ Editar</button>
                 <button id="btn-pre-imprimir" class="btn-normal">🖨️ Reimprimir</button>
@@ -136,12 +186,10 @@
         </div>
     </div>
 
-    <div id="modal-factura">
-        <div id="area-impresion">
-            <div id="detalle-factura">
-                </div>
-            
-            <div class="ocultar-impresion" style="margin-top:30px; text-align:center; display:flex; justify-content:center; gap:10px;">
+    <div id="modal-factura" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; overflow-y:auto; padding:20px;">
+        <div id="area-impresion" class="tarjeta" style="max-width:800px; margin:auto; background:white;">
+            <div id="detalle-factura"></div>
+            <div class="ocultar-impresion" style="margin-top:30px; text-align:center; display:flex; justify-content:center; gap:10px; padding-bottom:20px;">
                 <button onclick="window.print()" class="btn-enfoque">🖨️ Imprimir</button>
                 <button onclick="document.getElementById('modal-factura').style.display='none'" class="btn-normal">Cerrar</button>
             </div>
@@ -152,7 +200,6 @@
         <button onclick="navegar('menu')" class="btn-normal" style="margin-bottom: 20px; float: left;">← Volver</button>
         <div style="clear: both;"></div>
         <h3>📊 Centro de Reportes</h3>
-        
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
             <button onclick="irAReporteVentas()" class="btn-normal" style="height: 120px;">
                 <span style="font-size: 2em;">📅</span><br>Ventas
@@ -168,7 +215,6 @@
 
     <div id="seccion-pantalla-reporte-ventas" style="display:none; max-width: 900px; margin: auto;">
         <button onclick="navegar('menu-reportes')" class="btn-normal" style="margin-bottom: 20px;">← Volver</button>
-        
         <div class="tarjeta">
             <h3>📊 Reporte de Ventas</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: var(--fondo-general); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--dust-grey);">
@@ -190,64 +236,9 @@
         </div>
     </div>
 
-    <div class="tarjeta" id="formulario-costos-post">
-        <h3>💰 Registro de Costos de Producción</h3>
-        <div class="campo-busqueda" style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <input type="text" id="busqueda_factura_costos" placeholder="Ingrese Factura N° (ej: 20260001)" class="input-app">
-            <button class="btn-enfoque" onclick="buscarProductosFactura()">Buscar</button>
-        </div>
-
-        <div id="lista-productos-costos" style="display: none;">
-            <table id="tabla-carga-costos">
-                <thead>
-                    <tr>
-                        <th>Producto</th>
-                        <th>Mano de Obra (Unit)</th>
-                        <th>Materiales (Unit)</th>
-                    </tr>
-                </thead>
-                <tbody id="body-costos">
-                    </tbody>
-            </table>
-            <div style="text-align: right; margin-top: 15px;">
-                <button class="btn-confirmar" onclick="guardarCostosExcel()">Actualizar TCostos</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="tarjeta" id="formulario-envios-post">
-        <h3>🚚 Gestión de Envíos y Logística</h3>
-        
-        <div class="campo">
-            <label>Factura N°:</label>
-            <input type="text" id="envio_id_factura" class="input-app" readonly>
-        </div>
-
-        <div style="background: var(--soft-lilac); padding: 15px; border-radius: 8px; margin: 10px 0;">
-            <h4>📍 Coordenadas de Entrega</h4>
-            <input type="text" id="coordenada_nueva" placeholder="Pegar enlace de Maps o Coordenadas" class="input-app">
-            <div id="selector-direcciones" style="margin-top:10px;">
-                <small>¿En qué espacio desea guardar esta ubicación?</small><br>
-                <input type="radio" name="dir" value="1"> Dir 1 | 
-                <input type="radio" name="dir" value="2"> Dir 2 | 
-                <input type="radio" name="dir" value="3"> Dir 3
-            </div>
-        </div>
-
-        <div class="campo">
-            <label>Monto pagado por envío (C$):</label>
-            <input type="number" id="monto_envio_pago" class="input-app" placeholder="Monto que sale del negocio">
-            <small>*Este valor llenará la columna G de TGanancia</small>
-        </div>
-
-        <button class="btn-confirmar" style="width: 100%;" onclick="procesarEnvio()">Programar y Guardar</button>
-    </div>
-
-
     <p id="mensaje" style="text-align: center; font-size: 0.8em; margin-top: 20px; color: var(--mauve-bark);">Estado: Desconectado</p>
     
     <script src="app.js"></script>
 
 </body>
-
 </html>

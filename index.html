@@ -236,6 +236,17 @@
         </div>
     </div>
 
+    <div id="seccion-pantalla-reporte-ganancias" style="display:none; max-width: 600px; margin: auto;">
+        <button onclick="navegar('menu-reportes')" class="btn-normal" style="margin-bottom: 20px;">← Volver</button>
+        <div class="tarjeta" style="text-align: center;">
+            <h3>💸 Utilidad Neta Total</h3>
+            <p>Basado en Ventas - Costos - Envíos</p>
+            <h1 id="total-ganancia-display" style="color: var(--medium-jungle); font-size: 3em;">C$ 0.00</h1>
+            <hr>
+            <small>Recuerda que este valor es real solo si has cargado los costos de todas las facturas.</small>
+        </div>
+    </div>
+
     <p id="mensaje" style="text-align: center; font-size: 0.8em; margin-top: 20px; color: var(--mauve-bark);">Estado: Desconectado</p>
     
     <script src="app.js"></script>

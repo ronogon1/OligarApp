@@ -360,6 +360,22 @@ function renderizarReporteVentas(filas) {
 }
 
 
+function mostrarReporteGanancias() {
+    navegar('pantalla-reporte-ganancias'); // Crea esta sección similar a la de ventas
+    
+    // Sumamos la ganancia neta de la tabla TGanancia
+    const totalGanancia = datosGanancia.reduce((acc, fila) => {
+        // Solo sumamos si la factura está 'Activa' o 'Cancelada'
+        if (fila.Estado !== 'Anulada') {
+            return acc + (parseFloat(fila.Ganancia_Venta) || 0);
+        }
+        return acc;
+    }, 0);
+
+    document.getElementById('total-ganancia-display').innerText = `C$ ${totalGanancia.toLocaleString()}`;
+}
+
+
 // ==========================================
 // 4. LÓGICA DE DATOS (READ/WRITE/DELETE)
 // ==========================================
@@ -1239,6 +1255,41 @@ function validarDireccion(numeroDireccion) {
     }
     // Si está vacía o aceptó reemplazar, procedemos a guardar
     guardarNuevaCoordenada(numeroDireccion);
+}
+
+function buscarProductosFactura() {
+    const idFactura = document.getElementById('busqueda_factura_costos').value.trim();
+    const body = document.getElementById('body-costos');
+    const contenedor = document.getElementById('lista-productos-costos');
+
+    if (!idFactura) {
+        alert("Por favor, ingrese un número de factura.");
+        return;
+    }
+
+    // Filtramos los productos de TDetalle que coincidan con la factura
+    // Asumiendo que 'datosDetalle' es tu variable global con la tabla TDetalle
+    const productosEncontrados = datosDetalle.filter(fila => String(fila.Factura_ID) === idFactura);
+
+    if (productosEncontrados.length === 0) {
+        alert("No se encontraron productos para esta factura.");
+        contenedor.style.display = 'none';
+        return;
+    }
+
+    // Limpiamos la tabla y la llenamos con inputs
+    body.innerHTML = '';
+    productosEncontrados.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${item.Producto}</td>
+            <td><input type="number" class="input-app mo-costo" data-producto="${item.Producto}" value="0"></td>
+            <td><input type="number" class="input-app mat-costo" data-producto="${item.Producto}" value="0"></td>
+        `;
+        body.appendChild(tr);
+    });
+
+    contenedor.style.display = 'block';
 }
 
 

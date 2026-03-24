@@ -64,7 +64,8 @@ function navegar(pantalla) {
         'seccion-login', 
         'seccion-menu', 
         'seccion-consulta-tablas', 
-        'seccion-registro-ventas', 
+        'seccion-registro-ventas-Crochet', 
+        'seccion-registro-ventas-Creaciones',
         'seccion-gestion-facturas',
         'seccion-menu-reportes',
         'seccion-pantalla-reporte-ventas',
@@ -76,7 +77,7 @@ function navegar(pantalla) {
     const labelEstado = document.getElementById('estado-edicion') || document.querySelector('header em'); 
     const statusMsg = document.querySelector('header p'); 
 
-    if (pantalla !== 'registro-ventas') {
+    if (pantalla !== 'registro-ventas-Crochet') {
         if (labelEstado) labelEstado.innerText = '';
         if (statusMsg) statusMsg.innerText = 'Conectado correctamente.';
     }
@@ -102,7 +103,7 @@ function navegar(pantalla) {
             console.log("Pantalla de reportes lista. Esperando acción del usuario.");
         }
 
-        if (pantalla === 'registro-ventas') {
+        if (pantalla === 'registro-ventas-Crochet') {
             const form = document.getElementById('formVentas');
             if (form.dataset.modo !== "edit") {
                 document.getElementById('contenedor-productos').innerHTML = '';
@@ -1069,7 +1070,7 @@ async function cargarFacturaParaEditar(idFactura) {
         const pagosRegistrados = dA.values.filter(fila => fila[1] && fila[1].toString() === idFactura.toString());
         // ============================================================
 
-        navegar('registro-ventas');
+        navegar('registro-ventas-Crochet');
         
         // Marcamos el formulario con el ID existente
         const form = document.getElementById('formVentas');

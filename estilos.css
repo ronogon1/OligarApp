@@ -10,6 +10,7 @@
     /* COLORES DE IDENTIDAD (El nuevo protagonismo femenino) */
     --deep-lilac: #9575CD;           /* Lila vibrante: Botones principales y Buscar */
     --dusty-rose: #D81B60;           /* Rosa viejo: Acciones importantes/Negativas */
+    --plum: #DF96C6;           /* Rosa viejo: Acciones importantes/Negativas */
     --orchid-light: #E1BEE7;         /* Orquídea claro: Decoración y Hover */
     
     /* EL ANCLA PROFESIONAL (El café como soporte elegante) */
@@ -86,7 +87,7 @@ button, .btn-normal {
 
 /* Botón de Acción Negativa / Cerrar (Rosa Viejo en lugar de Rojo sangre) */
 .btn-negativo {
-    background-color: var(--dusty-rose) !important;
+    background-color: var(--plum) !important;
     color: var(--white) !important;
     border: none !important;
 }
@@ -160,7 +161,7 @@ tbody tr:nth-child(even) {
 
 
 /* ============================================================
-   MURO DE CONTENCIÓN ABSOLUTO PARA LA FACTURA (VERSIÓN FINAL)
+   MURO DE CONTENCIÓN ABSOLUTO PARA LA FACTURA DE OLIGAR CROCHET
    ============================================================ */
 
 #area-impresion * {
@@ -187,7 +188,7 @@ tbody tr:nth-child(even) {
 
 /* LÍNEA GRUESA: Forzamos el borde grueso específicamente en el encabezado (thead) */
 #area-impresion thead tr {
-    border-bottom: 3px solid #5D4037 !important; /* Color Mauve Bark oficial */
+    border-bottom: 4px solid #5D4037 !important; /* Color Mauve Bark oficial */
 }
 
 /* 3. Limpieza de bordes y padding */

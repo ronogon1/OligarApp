@@ -739,7 +739,7 @@ function mostrarEnPantalla(nombre, valores) {
 }
 
 
-function generarFactura(d) {
+function generarFacturaOligarCrochet(d) {
     const n = (num) => parseFloat(num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     // 1. Cálculo del Subtotal de productos (suma antes de envío y descuento global)
@@ -1017,7 +1017,7 @@ async function ImprimirFactura(idFactura) {
             }
         }
 
-        generarFactura({
+        generarFacturaOligarCrochet({
             Factura_ID: fC[0],
             Fecha: fC[1],
             Cliente: fC[2],

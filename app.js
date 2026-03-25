@@ -171,7 +171,6 @@ function navegar(pantalla) {
 
             if (contenedorProductos) {
                 contenedorProductos.innerHTML = "";
-                agregarFilaProducto();
             }
 
             if (labelEstado) labelEstado.innerText = "";
@@ -1419,7 +1418,6 @@ function limpiarYRegresar() {
     if (contenedorAnticipos) contenedorAnticipos.innerHTML = "";
     if (modal) modal.style.display = "none";
 
-    agregarFilaProducto();
     navegar("menu");
 }
 

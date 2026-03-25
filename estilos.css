@@ -167,6 +167,89 @@ button:disabled {
     box-shadow: none;
 }
 
+/* ============================================================
+   HEADER STICKY - REGISTRO DE VENTA
+   ============================================================ */
+.header-venta-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--orchid-light);
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 18px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-venta-centro {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.header-venta-logo {
+    width: 58px;
+    height: 58px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.header-venta-titulos {
+    text-align: center;
+    min-width: 0;
+}
+
+.header-venta-titulos h3 {
+    margin: 0;
+    padding: 0;
+    border: none;
+    font-size: 1.3rem;
+    line-height: 1.1;
+    color: var(--mauve-bark);
+    letter-spacing: 0.5px;
+}
+
+.header-venta-titulos p {
+    margin: 2px 0 0;
+    color: var(--deep-lilac);
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+
+.header-venta-espacio {
+    width: 96px; /* compensa visualmente el botón volver */
+}
+
+@media (max-width: 768px) {
+    .header-venta-sticky {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        text-align: center;
+    }
+
+    .header-venta-espacio {
+        display: none;
+    }
+
+    .header-venta-centro {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .header-venta-logo {
+        width: 52px;
+        height: 52px;
+    }
+}
 
 /* ============================================================
    5. FORMULARIOS

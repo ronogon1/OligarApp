@@ -406,15 +406,34 @@ function agregarFilaAnticipo(datos = null) {
     const nota = datos?.nota || "";
 
     div.innerHTML = `
-        <div style="display:grid; grid-template-columns: 1.2fr 1fr 2fr 30px; gap:8px; align-items: center; margin-bottom:10px; background:#fff; padding:10px; border:1px solid #eee; border-radius:5px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-            <input type="date" class="a_fecha" value="${fecha}" required style="width:100%;">
-            <input type="number" class="a_monto" placeholder="Monto" value="${monto}" required style="width:100%;">
-            <input type="text" class="a_comentario" placeholder="Efectivo, Transferencia, etc." value="${nota}" style="width:100%;">
+        <div style="display:grid; grid-template-columns: 1.2fr 1fr 2fr 30px; gap:8px; align-items: center; margin-bottom:10px;">
+            <input
+                type="date"
+                class="a_fecha"
+                value="${fecha}"
+                required
+                style="width:100%;"
+            >
+            <input
+                type="number"
+                class="a_monto"
+                placeholder="Monto"
+                value="${monto}"
+                required
+                style="width:100%;"
+            >
+            <input
+                type="text"
+                class="a_comentario"
+                placeholder="Efectivo, Transferencia, etc."
+                value="${nota}"
+                style="width:100%;"
+            >
 
             <button
                 type="button"
                 onclick="this.closest('.fila-anticipo').remove()"
-                style="color:#c62828; background:#ffeeee; border:1px solid #ffcdd2; border-radius:50%; width:25px; height:25px; cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:center; padding:0;"
+                style="color:#e53935; background:#ffebee; border:1px solid #ffcdd2; border-radius:50%; width:25px; height:25px; cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:center; padding:0;"
             >✕</button>
         </div>
     `;

@@ -1272,38 +1272,38 @@ async function abrirPantallaCostos(idFactura) {
                 <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
                     <div>
                         <label>Producto</label>
-                        <input type="text" value="${fila[0] || ""}" disabled>
+                        <input type="text" value="${fila[0] || ""}" disabled class="input-readonly">
                     </div>
                     <div>
                         <label>Cantidad</label>
-                        <input type="text" value="${fila[4] || ""}" disabled>
+                        <input type="text" value="${fila[4] || ""}" disabled class="input-readonly">
                     </div>
                     <div>
                         <label>Subtotal Venta</label>
-                        <input type="text" value="${fila[5] || ""}" disabled>
+                        <input type="text" value="${fila[5] || ""}" disabled class="input-readonly">
                     </div>
                     <div>
                         <label>Costo Unitario</label>
-                        <input type="text" value="${fila[8] || ""}" disabled class="costo-unitario-preview">
+                        <input type="text" value="${fila[8] || ""}" disabled class="input-readonly">
                     </div>
                 </div>
 
                 <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:10px;">
                     <div>
                         <label>MO Unitario</label>
-                        <input type="number" class="mo-unitario" value="${fila[6] || 0}" min="0" step="0.01">
+                        <input type="number" class="mo-unitario input-editable" value="${fila[6] || 0}">
                     </div>
                     <div>
                         <label>Materiales Unitario</label>
-                        <input type="number" class="materiales-unitario" value="${fila[7] || 0}" min="0" step="0.01">
+                        <input type="number" class="materiales-unitario input-editable" value="${fila[7] || 0}">
                     </div>
                     <div>
                         <label>Subtotal Costo</label>
-                        <input type="text" value="${fila[9] || 0}" disabled class="subtotal-costo-preview">
+                        <input type="text" value="${fila[9] || 0}" disabled class="input-readonly">
                     </div>
                     <div>
                         <label>Ganancia Producto</label>
-                        <input type="text" value="${fila[11] || 0}" disabled class="ganancia-producto-preview">
+                        <input type="text" value="${fila[11] || 0}" disabled class="input-readonly">
                     </div>
                 </div>
             `;

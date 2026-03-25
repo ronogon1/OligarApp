@@ -800,24 +800,40 @@
                 "
             >
                 <div>
-                    <strong>Factura ID:</strong>
+                    <label for="costos_factura_id">Factura ID</label>
                     <input
                         type="text"
                         id="costos_factura_id"
                         disabled
-                        style="width: 100%;"
+                        class="input-readonly"
                     >
                 </div>
 
                 <div>
-                    <strong>Estado:</strong>
+                    <label for="costos_estado_factura">Estado</label>
                     <input
                         type="text"
                         id="costos_estado_factura"
                         disabled
-                        style="width: 100%;"
+                        class="input-readonly"
                     >
                 </div>
+            </div>
+
+            <div
+                style="
+                    margin-bottom: 15px;
+                    padding: 12px 15px;
+                    border-left: 4px solid #fbc02d;
+                    background: #fffde7;
+                    border-radius: 8px;
+                    color: var(--mauve-bark);
+                    font-size: 0.95em;
+                "
+            >
+                Completa únicamente los campos de <strong>Mano de Obra</strong> y
+                <strong>Materiales</strong> por unidad. Los demás valores se muestran
+                solo como referencia.
             </div>
 
             <div id="contenedor-costos-productos"></div>

@@ -221,6 +221,30 @@ small {
     background: var(--floral-white);
 }
 
+/* ============================================================
+   CAMPOS EDITABLES (COSTOS)
+   ============================================================ */
+.input-editable {
+    background-color: #fff9c4; /* amarillo suave */
+    border: 1px solid #fbc02d;
+}
+
+.input-editable:focus {
+    background-color: #fff59d;
+    border-color: #f9a825;
+}
+
+
+/* ============================================================
+   CAMPOS NO EDITABLES
+   ============================================================ */
+
+.input-readonly {
+    background-color: #f5f5f5;
+    color: #777;
+    border: 1px solid #ddd;
+    cursor: not-allowed;
+}
 
 /* ============================================================
    7. TABLAS Y REPORTES

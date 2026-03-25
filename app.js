@@ -498,6 +498,10 @@ if (formVentas) {
         setMensaje(esEdicion ? "Actualizando factura..." : "Guardando venta...");
 
         try {
+            mostrarOverlayCarga(
+                esEdicion ? "Actualizando factura..." : "Guardando venta..."
+            );
+
             const token = await getAuthToken();
 
             await asegurarRegistroCliente(clienteNombre);
@@ -552,6 +556,7 @@ if (formVentas) {
 
                 if (archivo) {
                     const nombreImg = `${facturaID}_${nombre.replace(/\s+/g, "_")}.jpg`;
+
                     const uploadUrl =
                         `https://graph.microsoft.com/v1.0/drives/${CONFIG.graph.driveId}/items/${CONFIG.graph.productosFolderId}:/${nombreImg}:/content`;
 
@@ -650,6 +655,7 @@ if (formVentas) {
             alert("Error al guardar: " + error.message);
             setMensaje("Error en el registro.");
         } finally {
+            ocultarOverlayCarga();
             if (btn) btn.disabled = false;
         }
     };
@@ -945,12 +951,14 @@ async function previsualizarFactura(idParam) {
         const btnAnular = document.getElementById("btn-pre-anular");
         const btnActivar = document.getElementById("btn-pre-activar");
         const btnImprimir = document.getElementById("btn-pre-imprimir");
+        const btnCostos = document.getElementById("btn-pre-costos");
 
         if (txtStatus) txtStatus.innerText = estado.toUpperCase();
 
         if (btnEditar) btnEditar.style.display = "block";
         if (btnAnular) btnAnular.style.display = "block";
         if (btnActivar) btnActivar.style.display = "none";
+        if (btnCostos) btnCostos.onclick = () => abrirPantallaCostos(id);
 
         if (estado === "Anulada") {
             if (badge) {
@@ -1218,6 +1226,164 @@ async function cambiarEstadoFactura(id, nuevoEstado) {
     }
 }
 
+function volverAGestionFacturas() {
+    navegar("gestion-facturas");
+}
+
+// ==========================================
+// . COSTOS
+// ==========================================
+async function abrirPantallaCostos(idFactura) {
+    if (!idFactura) return alert("No se recibió Factura ID.");
+
+    try {
+        mostrarOverlayCarga("Cargando costos...");
+
+        const costos = await leerTabla(CONFIG.tablas.costos);
+        const filasFactura = costos.filter(
+            (fila, index) =>
+                index > 0 &&
+                fila[1] &&
+                fila[1].toString() === idFactura.toString()
+        );
+
+        if (!filasFactura.length) {
+            alert("No se encontraron registros en TCostos para esta factura.");
+            return;
+        }
+
+        document.getElementById("costos_factura_id").value = idFactura;
+        document.getElementById("costos_estado_factura").value =
+            filasFactura[0][3] || "";
+
+        const contenedor = document.getElementById("contenedor-costos-productos");
+        contenedor.innerHTML = "";
+
+        filasFactura.forEach((fila, index) => {
+            const div = document.createElement("div");
+            div.className = "tarjeta";
+            div.style.marginBottom = "15px";
+
+            div.dataset.rowIndex = index;
+            div.dataset.producto = fila[0];
+            div.dataset.facturaId = fila[1];
+
+            div.innerHTML = `
+                <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
+                    <div>
+                        <label>Producto</label>
+                        <input type="text" value="${fila[0] || ""}" disabled>
+                    </div>
+                    <div>
+                        <label>Cantidad</label>
+                        <input type="text" value="${fila[4] || ""}" disabled>
+                    </div>
+                    <div>
+                        <label>Subtotal Venta</label>
+                        <input type="text" value="${fila[5] || ""}" disabled>
+                    </div>
+                    <div>
+                        <label>Costo Unitario</label>
+                        <input type="text" value="${fila[8] || ""}" disabled class="costo-unitario-preview">
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:10px;">
+                    <div>
+                        <label>MO Unitario</label>
+                        <input type="number" class="mo-unitario" value="${fila[6] || 0}" min="0" step="0.01">
+                    </div>
+                    <div>
+                        <label>Materiales Unitario</label>
+                        <input type="number" class="materiales-unitario" value="${fila[7] || 0}" min="0" step="0.01">
+                    </div>
+                    <div>
+                        <label>Subtotal Costo</label>
+                        <input type="text" value="${fila[9] || 0}" disabled class="subtotal-costo-preview">
+                    </div>
+                    <div>
+                        <label>Ganancia Producto</label>
+                        <input type="text" value="${fila[11] || 0}" disabled class="ganancia-producto-preview">
+                    </div>
+                </div>
+            `;
+
+            contenedor.appendChild(div);
+        });
+
+        navegar("carga-costos");
+    } catch (error) {
+        console.error(error);
+        alert("Error al abrir la pantalla de costos: " + error.message);
+    } finally {
+        ocultarOverlayCarga();
+    }
+}
+
+async function guardarCostosFactura() {
+    const idFactura = document.getElementById("costos_factura_id")?.value;
+    if (!idFactura) return alert("No hay factura seleccionada.");
+
+    try {
+        mostrarOverlayCarga("Guardando costos...");
+
+        const token = await getAuthToken();
+        const valores = await leerTabla(CONFIG.tablas.costos);
+
+        const filasFormulario = document.querySelectorAll("#contenedor-costos-productos .tarjeta");
+        const filasTabla = valores;
+
+        for (const bloque of filasFormulario) {
+            const producto = bloque.dataset.producto;
+            const facturaId = bloque.dataset.facturaId;
+
+            const mo = parseFloat(bloque.querySelector(".mo-unitario")?.value) || 0;
+            const materiales = parseFloat(bloque.querySelector(".materiales-unitario")?.value) || 0;
+
+            const filaEncontradaIndex = filasTabla.findIndex((fila, index) =>
+                index > 0 &&
+                fila[0] === producto &&
+                fila[1]?.toString() === facturaId?.toString()
+            );
+
+            if (filaEncontradaIndex === -1) continue;
+
+            const filaActual = [...filasTabla[filaEncontradaIndex]];
+
+            filaActual[6] = mo;
+            filaActual[7] = materiales;
+
+            const apiIndex = filaEncontradaIndex - 1;
+            const urlUpdate =
+                `${GRAPH_BASE_URL}/workbook/tables/${CONFIG.tablas.costos}/rows/itemAt(index=${apiIndex})`;
+
+            const resp = await fetch(urlUpdate, {
+                method: "PATCH",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    values: [filaActual]
+                })
+            });
+
+            if (!resp.ok) {
+                throw new Error(`No se pudo actualizar costos de ${producto}`);
+            }
+        }
+
+        alert("Costos guardados correctamente.");
+        await leerExcel();
+        await previsualizarFactura(idFactura);
+        navegar("gestion-facturas");
+    } catch (error) {
+        console.error(error);
+        alert("Error al guardar costos: " + error.message);
+    } finally {
+        ocultarOverlayCarga();
+    }
+}
 
 // ==========================================
 // 17. LIMPIEZA Y UTILIDADES

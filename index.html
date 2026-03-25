@@ -773,7 +773,69 @@
     </section>
 
     <!-- ==========================================
-         11. MENSAJE GLOBAL
+         11. FORMULARIO CARGAR COSTOS
+    ========================================== -->
+
+    <section
+        id="seccion-carga-costos"
+        style="display: none; max-width: 1000px; margin: auto;"
+    >
+        <button
+            onclick="volverAGestionFacturas()"
+            class="btn-normal"
+            style="margin-bottom: 20px;"
+        >
+            ← Volver
+        </button>
+
+        <div class="tarjeta">
+            <h3>💰 Cargar Costos de Producción</h3>
+
+            <div
+                style="
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 15px;
+                    margin-bottom: 20px;
+                "
+            >
+                <div>
+                    <strong>Factura ID:</strong>
+                    <input
+                        type="text"
+                        id="costos_factura_id"
+                        disabled
+                        style="width: 100%;"
+                    >
+                </div>
+
+                <div>
+                    <strong>Estado:</strong>
+                    <input
+                        type="text"
+                        id="costos_estado_factura"
+                        disabled
+                        style="width: 100%;"
+                    >
+                </div>
+            </div>
+
+            <div id="contenedor-costos-productos"></div>
+
+            <button
+                type="button"
+                onclick="guardarCostosFactura()"
+                class="btn-confirmar"
+                style="width: 100%; margin-top: 20px;"
+            >
+                Guardar Costos
+            </button>
+        </div>
+    </section>
+
+
+    <!-- ==========================================
+         12. MENSAJE GLOBAL
     ========================================== -->
     <p
         id="mensaje"
@@ -794,6 +856,6 @@
             <p id="overlay-texto">Procesando...</p>
         </div>
     </div>
-    
+
 </body>
 </html>

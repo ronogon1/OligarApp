@@ -35,19 +35,6 @@ async function getAuthToken() {
 document.getElementById('loginBtn').onclick = async () => {
     try {
         await msalInstance.loginPopup({ scopes: ["user.read", "Files.ReadWrite"] });
-        document.getElementById('mensaje').innerText = "Conectado. Cargando datos...";
-        
-        // ORDEN CRÍTICO: Primero cargar clientes para que el buscador funcione
-        await actualizarMemoriaClientes();
-        await leerExcel();
-        
-        navegar('menu');
-    } catch (err) { alert("Error de Login: " + err.message); }
-};
-
-document.getElementById('loginBtn').onclick = async () => {
-    try {
-        await msalInstance.loginPopup({ scopes: ["user.read", "Files.ReadWrite"] });
         document.getElementById('mensaje').innerText = "Conectado correctamente.";
         await actualizarMemoriaClientes();
         await leerExcel();
@@ -70,7 +57,8 @@ function navegar(pantalla) {
         'seccion-menu-reportes',
         'seccion-pantalla-reporte-ventas',
         'seccion-carga-costos',
-        'seccion-programar-envio'
+        'seccion-programar-envio',
+        'seccion-pantalla-reporte-ganancias'
     ];
 
     // 1. Limpieza de encabezados de edición
@@ -412,30 +400,6 @@ async function leerExcel() {
 }
 
 /**
- * Carga los nombres de clientes en una variable global para el buscador rápido.
- */
-async function actualizarMemoriaClientes() {
-    try {
-        const token = await getAuthToken();
-        const res = await fetch(`${graphBaseUrl}/workbook/tables/TClientes/range`, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
-        });
-        const data = await res.json();
-        
-        if (data.values) {
-            // Guardamos Cliente_ID (índice 0) y Nombre (índice 1)
-            listaClientesGlobal = data.values.slice(1).map(fila => ({
-                id: fila[0],
-                nombre: fila[1]
-            }));
-            console.log("Memoria de clientes lista:", listaClientesGlobal.length);
-        }
-    } catch (e) {
-        console.error("Error cargando clientes:", e);
-    }
-}
-
-/**
  * Escribe nuevas filas en cualquier tabla de Excel.
  */
 async function escribirFilas(nombreTabla, filas) {
@@ -697,7 +661,16 @@ async function refrescarTablasManual() {
     if (datosRecienLlegados.TDetalle) {
         mostrarEnPantalla('TDetalle', datosRecienLlegados.TDetalle);
     }
-    
+    if (datosRecienLlegados.TClientes) {
+        mostrarEnPantalla('TClientes', datosRecienLlegados.TDetalle);
+    }
+    if (datosRecienLlegados.TCostos) {
+        mostrarEnPantalla('TCostos', datosRecienLlegados.TDetalle);
+    }
+    if (datosRecienLlegados.TGanancia) {
+        mostrarEnPantalla('TGanancia', datosRecienLlegados.TDetalle);
+    }
+
     document.getElementById('mensaje').innerText = "Tablas actualizadas.";
 }
 

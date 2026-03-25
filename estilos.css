@@ -301,6 +301,50 @@ tbody tr:nth-child(even) {
     position: relative;
 }
 
+/* ============================================================
+   9.1 OVERLAY DE CARGA (BLOQUEANTE)
+   ============================================================ */
+#overlay-carga {
+    position: fixed;
+    inset: 0;
+    background: rgba(93, 64, 55, 0.35);
+    backdrop-filter: blur(2px);
+    z-index: 20000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.overlay-box {
+    background: var(--white);
+    border: 1px solid var(--orchid-light);
+    border-radius: 14px;
+    padding: 24px 30px;
+    min-width: 220px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+}
+
+.overlay-box p {
+    margin: 12px 0 0;
+    color: var(--mauve-bark);
+    font-weight: 600;
+}
+
+.spinner-carga {
+    width: 42px;
+    height: 42px;
+    margin: 0 auto;
+    border: 4px solid var(--thistle);
+    border-top: 4px solid var(--fresh-sky);
+    border-radius: 50%;
+    animation: girarCarga 0.8s linear infinite;
+}
+
+@keyframes girarCarga {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
 
 /* ============================================================
    10. MURO DE CONTENCIÓN PARA FACTURA

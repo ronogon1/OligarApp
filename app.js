@@ -20,7 +20,9 @@ const CONFIG = {
         facturas: "TFacturas",
         detalle: "TDetalle",
         anticipos: "TAnticipos",
-        clientes: "TClientes"
+        clientes: "TClientes",
+        costos: "TCostos",
+        ganancia: "TGanancia"
     },
 
     secciones: [
@@ -63,6 +65,19 @@ function setMensaje(texto) {
     if (el) el.innerText = texto;
 }
 
+function mostrarOverlayCarga(texto = "Procesando...") {
+    const overlay = document.getElementById("overlay-carga");
+    const textoEl = document.getElementById("overlay-texto");
+
+    if (textoEl) textoEl.innerText = texto;
+    if (overlay) overlay.style.display = "flex";
+}
+
+function ocultarOverlayCarga() {
+    const overlay = document.getElementById("overlay-carga");
+    if (overlay) overlay.style.display = "none";
+}
+
 // ==========================================
 // 5. AUTENTICACIÓN
 // ==========================================
@@ -91,18 +106,19 @@ async function getAuthToken() {
 
 async function iniciarSesion() {
     try {
+        mostrarOverlayCarga("Conectando...");
         await msalInstance.loginPopup({
             scopes: ["user.read", "Files.ReadWrite"]
         });
 
         setMensaje("Conectado. Cargando datos...");
-
         await actualizarMemoriaClientes();
         await leerExcel();
-
         navegar("menu");
     } catch (error) {
         alert("Error de Login: " + error.message);
+    } finally {
+        ocultarOverlayCarga();
     }
 }
 
@@ -643,31 +659,39 @@ if (formVentas) {
 // 12. CONSULTAS Y TABLAS
 // ==========================================
 async function refrescarTablasManual() {
-    setMensaje("Actualizando datos...");
+    try {
+        mostrarOverlayCarga("Cargando tablas...");
+        setMensaje("Actualizando datos...");
 
-    const datos = await leerExcel();
+        const datos = await leerExcel();
 
-    if (datos[CONFIG.tablas.facturas]) {
-        mostrarEnPantalla(
+        const tablasAMostrar = [
             CONFIG.tablas.facturas,
-            datos[CONFIG.tablas.facturas]
-        );
-    }
-
-    if (datos[CONFIG.tablas.detalle]) {
-        mostrarEnPantalla(
             CONFIG.tablas.detalle,
-            datos[CONFIG.tablas.detalle]
-        );
-    }
+            CONFIG.tablas.clientes,
+            CONFIG.tablas.costos,
+            CONFIG.tablas.ganancia
+        ];
 
-    setMensaje("Tablas actualizadas.");
+        tablasAMostrar.forEach((tabla) => {
+            if (datos[tabla]) {
+                mostrarEnPantalla(tabla, datos[tabla]);
+            }
+        });
+
+        setMensaje("Tablas actualizadas.");
+    } finally {
+        ocultarOverlayCarga();
+    }
 }
 
 function mostrarEnPantalla(nombre, valores) {
     const ids = {
         [CONFIG.tablas.facturas]: "tabla-facturas",
-        [CONFIG.tablas.detalle]: "tabla-detalle"
+        [CONFIG.tablas.detalle]: "tabla-detalle",
+        [CONFIG.tablas.clientes]: "tabla-clientes",
+        [CONFIG.tablas.costos]: "tabla-costos",
+        [CONFIG.tablas.ganancia]: "tabla-ganancia"
     };
 
     const contenedorId = ids[nombre];
@@ -862,6 +886,8 @@ async function previsualizarFactura(idParam) {
     if (!id) return alert("Ingresa un ID");
 
     try {
+        mostrarOverlayCarga("Cargando factura...");
+
         const facturas = await leerTabla(CONFIG.tablas.facturas);
         const fC = facturas.find(
             (fila) => fila[0] && fila[0].toString() === id.toString()
@@ -954,11 +980,15 @@ async function previsualizarFactura(idParam) {
     } catch (error) {
         console.error(error);
         alert("Error al cargar vista previa: " + error.message);
+    } finally {
+        ocultarOverlayCarga();
     }
 }
 
 async function ImprimirFactura(idFactura) {
     try {
+        mostrarOverlayCarga("Preparando factura...");
+
         const token = await getAuthToken();
 
         const facturas = await leerTabla(CONFIG.tablas.facturas);
@@ -972,7 +1002,6 @@ async function ImprimirFactura(idFactura) {
         }
 
         const detalle = await leerTabla(CONFIG.tablas.detalle);
-
         const detalles = [];
 
         for (const fila of detalle) {
@@ -1021,7 +1050,10 @@ async function ImprimirFactura(idFactura) {
         });
 
     } catch (error) {
+        console.error(error);
         alert("Error al buscar factura.");
+    } finally {
+        ocultarOverlayCarga();
     }
 }
 
@@ -1035,6 +1067,8 @@ async function cargarFacturaParaEditar(idFactura) {
     setMensaje("Buscando factura...");
 
     try {
+        mostrarOverlayCarga("Cargando factura para edición...");
+
         const facturas = await leerTabla(CONFIG.tablas.facturas);
         const detalle = await leerTabla(CONFIG.tablas.detalle);
         const anticipos = await leerTabla(CONFIG.tablas.anticipos);
@@ -1070,7 +1104,11 @@ async function cargarFacturaParaEditar(idFactura) {
         const inputDescG = document.getElementById("v_desc_global");
 
         if (inputCliente) inputCliente.value = fC[2];
-        if (inputFecha) inputFecha.value = excelSerialToDate(fC[1]).toISOString().split("T")[0];
+        if (inputFecha) {
+            inputFecha.value = excelSerialToDate(fC[1])
+                .toISOString()
+                .split("T")[0];
+        }
         if (inputEnvio) inputEnvio.value = fC[3];
         if (inputDescG) inputDescG.value = fC[4];
 
@@ -1098,7 +1136,9 @@ async function cargarFacturaParaEditar(idFactura) {
 
             pagosRegistrados.forEach((pago) => {
                 agregarFilaAnticipo({
-                    fecha: excelSerialToDate(pago[3]).toISOString().split("T")[0],
+                    fecha: excelSerialToDate(pago[3])
+                        .toISOString()
+                        .split("T")[0],
                     monto: pago[4],
                     nota: pago[5]
                 });
@@ -1109,6 +1149,8 @@ async function cargarFacturaParaEditar(idFactura) {
     } catch (error) {
         console.error("Error en cargarFacturaParaEditar:", error);
         alert("Error técnico al cargar los datos: " + error.message);
+    } finally {
+        ocultarOverlayCarga();
     }
 }
 

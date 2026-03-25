@@ -1330,47 +1330,38 @@ async function guardarCostosFactura() {
         const token = await getAuthToken();
         const valores = await leerTabla(CONFIG.tablas.costos);
 
-        const filasFormulario = document.querySelectorAll("#contenedor-costos-productos .tarjeta");
-        const filasTabla = valores;
+        const filasFormulario = document.querySelectorAll(
+            "#contenedor-costos-productos .tarjeta"
+        );
 
         for (const bloque of filasFormulario) {
             const producto = bloque.dataset.producto;
             const facturaId = bloque.dataset.facturaId;
 
-            const mo = parseFloat(bloque.querySelector(".mo-unitario")?.value) || 0;
-            const materiales = parseFloat(bloque.querySelector(".materiales-unitario")?.value) || 0;
+            const mo =
+                parseFloat(bloque.querySelector(".mo-unitario")?.value) || 0;
+            const materiales =
+                parseFloat(bloque.querySelector(".materiales-unitario")?.value) || 0;
 
-            const filaEncontradaIndex = filasTabla.findIndex((fila, index) =>
-                index > 0 &&
-                fila[0] === producto &&
-                fila[1]?.toString() === facturaId?.toString()
+            const filaEncontradaIndex = valores.findIndex(
+                (fila, index) =>
+                    index > 0 &&
+                    fila[0] === producto &&
+                    fila[1]?.toString() === facturaId?.toString()
             );
 
-            if (filaEncontradaIndex === -1) continue;
-
-            const filaActual = [...filasTabla[filaEncontradaIndex]];
-
-            filaActual[6] = mo;
-            filaActual[7] = materiales;
+            if (filaEncontradaIndex === -1) {
+                continue;
+            }
 
             const apiIndex = filaEncontradaIndex - 1;
-            const urlUpdate =
-                `${GRAPH_BASE_URL}/workbook/tables/${CONFIG.tablas.costos}/rows/itemAt(index=${apiIndex})`;
 
-            const resp = await fetch(urlUpdate, {
-                method: "PATCH",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    values: [filaActual]
-                })
-            });
-
-            if (!resp.ok) {
-                throw new Error(`No se pudo actualizar costos de ${producto}`);
-            }
+            await actualizarSoloCostosUnitarios(
+                apiIndex,
+                mo,
+                materiales,
+                token
+            );
         }
 
         alert("Costos guardados correctamente.");
@@ -1439,7 +1430,7 @@ function obtenerFechaComparar(serial) {
 }
 
 // ==========================================
-// 18. REPORTES
+// 18. REPORTES Y FUNCIONES AUXILIARES
 // ==========================================
 async function irAReporteVentas() {
     navegar("pantalla-reporte-ventas");
@@ -1608,3 +1599,79 @@ function renderizarReporteVentas(filas) {
     `;
 }
 
+function letraAIndiceColumna(letra) {
+    let n = 0;
+    for (let i = 0; i < letra.length; i++) {
+        n = n * 26 + (letra.charCodeAt(i) - 64);
+    }
+    return n;
+}
+
+function indiceAColumnaLetra(numero) {
+    let letra = "";
+    while (numero > 0) {
+        const residuo = (numero - 1) % 26;
+        letra = String.fromCharCode(65 + residuo) + letra;
+        numero = Math.floor((numero - 1) / 26);
+    }
+    return letra;
+}
+
+async function actualizarSoloCostosUnitarios(apiIndex, mo, materiales, token) {
+    // 1. Obtener el address real de la fila dentro de la tabla
+    const rowRangeUrl =
+        `${GRAPH_BASE_URL}/workbook/tables/${CONFIG.tablas.costos}/rows/itemAt(index=${apiIndex})/range`;
+
+    const rowResp = await fetch(rowRangeUrl, {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    if (!rowResp.ok) {
+        throw new Error("No se pudo obtener la fila de TCostos.");
+    }
+
+    const rowData = await rowResp.json();
+    const address = rowData.address; // ejemplo: Hoja1!A7:L7
+
+    const [sheetPart, rangePart] = address.split("!");
+    const sheetName = sheetPart.replace(/^'/, "").replace(/'$/, "");
+
+    const colMatch = rangePart.match(/^([A-Z]+)/i);
+    const rowMatch = rangePart.match(/(\d+)/);
+
+    if (!colMatch || !rowMatch) {
+        throw new Error("No se pudo interpretar la dirección de la fila.");
+    }
+
+    const colInicial = colMatch[1].toUpperCase();
+    const filaExcel = rowMatch[1];
+
+    // Columnas relativas dentro de TCostos:
+    // índice 6 = MO_Unitario
+    // índice 7 = Materiales_Unitario
+    const indiceColInicial = letraAIndiceColumna(colInicial);
+    const colMO = indiceAColumnaLetra(indiceColInicial + 6);
+    const colMateriales = indiceAColumnaLetra(indiceColInicial + 7);
+
+    const rangoLocal = `${colMO}${filaExcel}:${colMateriales}${filaExcel}`;
+
+    const updateUrl =
+        `${GRAPH_BASE_URL}/workbook/worksheets('${sheetName}')/range(address='${rangoLocal}')`;
+
+    const updateResp = await fetch(updateUrl, {
+        method: "PATCH",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            values: [[mo, materiales]]
+        })
+    });
+
+    if (!updateResp.ok) {
+        throw new Error(`No se pudo actualizar MO/Materiales en fila ${filaExcel}.`);
+    }
+}

@@ -1,106 +1,229 @@
 /* ============================================================
-   PALETA DE COLORES ACTUALIZADA - OLIGAR CROCHET (Lila & Rose)
+   1. PALETA DE COLORES - OLIGAR
+   Base: Mauve Bark, Dust Grey, Floral White
+   Positivo: Medium Jungle, Light Green
+   Negativo: Oxblood, Cotton Rose
+   Marca: Deep Lilac, Thistle
+   Enfoque: Fresh Sky
    ============================================================ */
 :root {
-    /* FONDOS (Suavidad y Protagonismo Pastel) */
-    --fondo-general: #FFF9FB;        /* Blanco con un toque de rosa */
-    --soft-lilac: #F3E5F5;           /* Lila muy pálido para secciones */
+    /* Base */
+    --mauve-bark: #5D4037;
+    --dust-grey: #D7CCC8;
+    --floral-white: #FFFCF5;
     --white: #FFFFFF;
 
-    /* COLORES DE IDENTIDAD (El nuevo protagonismo femenino) */
-    --deep-lilac: #9575CD;           /* Lila vibrante: Botones principales y Buscar */
-    --dusty-rose: #D81B60;           /* Rosa viejo: Acciones importantes/Negativas */
-    --plum: #E0AAD7;           /* Rosa viejo: Acciones importantes/Negativas */
-    --orchid-light: #E1BEE7;         /* Orquídea claro: Decoración y Hover */
-    --blood-red: #8E0F0F;           /*Rojo sangre para combinar con el plum
-    
-    /* EL ANCLA PROFESIONAL (El café como soporte elegante) */
-    --mauve-bark: #5D4037;           /* Texto Principal y Títulos */
-    --dust-grey: #D7CCC8;            /* Bordes finos y detalles artesanales */
+    /* Positivos */
+    --medium-jungle: #4CAF50;
+    --light-green: #B3FFB3;
 
-    /* ESTADOS */
-    --success-mint: #E8F5E9;         /* Verde menta suave para Éxito */
-    --medium-jungle: #66BB6A;        /* Verde para Guardar/Confirmar */
-    --error-blush: #FFEBEE;          /* Rosa rojizo para Errores */
+    /* Negativos */
+    --oxblood: #950000;
+    --cotton-rose: #F4C7C3;
+
+    /* Marca */
+    --deep-lilac: #7E57C2;
+    --thistle: #D1C4E9;
+
+    /* Enfoque */
+    --fresh-sky: #46B1E1;
+
+    /* Tonos de apoyo */
+    --fondo-general: #FFF9FB;
+    --soft-lilac: #F3E5F5;
+    --orchid-light: #E1BEE7;
+    --success-mint: #E8F5E9;
+    --error-blush: #FFEBEE;
+
+    /* Texto */
+    --texto-principal: var(--mauve-bark);
+    --texto-secundario: #6D5A54;
+    --texto-suave: #8C7B75;
+
+    /* Bordes y sombras */
+    --borde-suave: #E8DDE7;
+    --sombra-suave: 0 4px 15px rgba(126, 87, 194, 0.10);
+    --sombra-media: 0 6px 18px rgba(93, 64, 55, 0.12);
+
+    /* Radios */
+    --radio-sm: 8px;
+    --radio-md: 12px;
+    --radio-lg: 15px;
+
+    /* Transiciones */
+    --transicion: all 0.2s ease;
 }
+
 
 /* ============================================================
-   ESTILOS BASE DE LA APP 
+   2. RESET SUAVE / BASE
    ============================================================ */
+* {
+    box-sizing: border-box;
+}
+
 body {
-    background-color: var(--fondo-general);
-    color: var(--mauve-bark);
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
     padding: 20px;
+    background-color: var(--fondo-general);
+    color: var(--texto-principal);
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.4;
 }
 
-/* Tarjetas y Contenedores */
-.tarjeta, div[id^="seccion-"] {
-    background: var(--white);
-    border: 1px solid var(--orchid-light); /* Borde sutil en lila */
-    border-radius: 12px;
-    padding: 25px;
-    margin-bottom: 25px;
-    box-shadow: 0 4px 15px rgba(149, 117, 205, 0.1); /* Sombra con tinte lila */
+img {
+    max-width: 100%;
+    display: block;
 }
 
-/* Títulos con Línea Decorativa (Mauve Bark para elegancia) */
-h1, h2, h3, h4 {
-    color: var(--mauve-bark);
-    border-bottom: 3px solid var(--deep-lilac); /* Línea ahora en Lila */
-    padding-bottom: 8px;
+h1,
+h2,
+h3,
+h4 {
     margin-top: 0;
+    color: var(--mauve-bark);
+    border-bottom: 3px solid var(--deep-lilac);
+    padding-bottom: 8px;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
 
-/* ============================================================
-   BOTONES (Rediseñados para la nueva estética) 
-   ============================================================ */
+p {
+    margin-top: 0;
+}
 
-/* Botón Normal / Navegación */
-button, .btn-normal {
+
+/* ============================================================
+   3. CONTENEDORES Y TARJETAS
+   ============================================================ */
+.tarjeta,
+section[id^="seccion-"] {
+    background: var(--white);
+    border: 1px solid var(--orchid-light);
+    border-radius: var(--radio-md);
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: var(--sombra-suave);
+}
+
+
+/* ============================================================
+   4. BOTONES
+   ============================================================ */
+button,
+.btn-normal,
+.btn-enfoque,
+.btn-confirmar,
+.btn-negativo {
+    padding: 10px 20px;
+    border-radius: var(--radio-sm);
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transicion);
+    font-family: inherit;
+}
+
+button,
+.btn-normal {
     background-color: var(--soft-lilac);
     color: var(--mauve-bark);
     border: 1px solid var(--deep-lilac);
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s ease;
 }
 
-/* Botón de Enfoque / Buscar (Ahora en Deep Lilac) */
 .btn-enfoque {
-    background-color: var(--deep-lilac) !important;
+    background-color: var(--fresh-sky) !important;
     color: var(--white) !important;
     border: none !important;
-    box-shadow: 0 2px 6px rgba(149, 117, 205, 0.4);
+    box-shadow: 0 2px 8px rgba(70, 177, 225, 0.35);
 }
 
-/* Botón de Confirmación / Guardar */
-.btn-confirmar, button[type="submit"] {
+.btn-confirmar,
+button[type="submit"] {
     background-color: var(--medium-jungle) !important;
     color: var(--white) !important;
-    border: 1px solid var(--success-mint) !important;
+    border: 1px solid var(--light-green) !important;
 }
 
-/* Botón de Acción Negativa / Cerrar (Rosa Viejo en lugar de Rojo sangre) */
 .btn-negativo {
-    background-color: var(--plum) !important;
-    color: var(--blood-red) !important;
-    border: none !important;
+    background-color: var(--cotton-rose) !important;
+    color: var(--oxblood) !important;
+    border: 1px solid #e9a9a2 !important;
 }
 
-button:hover {
-    filter: brightness(0.95);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+button:hover,
+.btn-normal:hover,
+.btn-enfoque:hover,
+.btn-confirmar:hover,
+.btn-negativo:hover {
+    filter: brightness(0.97);
+    transform: translateY(-1px);
+    box-shadow: var(--sombra-media);
 }
+
+button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
 
 /* ============================================================
-   TABLAS Y REPORTES 
+   5. FORMULARIOS
+   ============================================================ */
+input,
+select,
+textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--dust-grey);
+    border-radius: 4px;
+    background: var(--white);
+    color: var(--texto-principal);
+    font: inherit;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--fresh-sky);
+    box-shadow: 0 0 0 3px rgba(70, 177, 225, 0.15);
+}
+
+label {
+    color: var(--texto-principal);
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+small {
+    color: var(--texto-suave);
+}
+
+
+/* ============================================================
+   6. FILAS DINÁMICAS
+   ============================================================ */
+.fila-producto,
+.fila-anticipo {
+    position: relative;
+}
+
+.sugerencia-item {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--borde-suave);
+    background: var(--white);
+}
+
+.sugerencia-item:hover {
+    background: var(--floral-white);
+}
+
+
+/* ============================================================
+   7. TABLAS Y REPORTES
    ============================================================ */
 table {
     width: 100%;
@@ -110,23 +233,29 @@ table {
 }
 
 thead tr {
-    background-color: var(--deep-lilac); /* Encabezados en Lila */
+    background-color: var(--deep-lilac);
     color: var(--white);
 }
 
-th, td {
+th,
+td {
     padding: 12px;
     border: 1px solid var(--soft-lilac);
     text-align: center;
+    vertical-align: middle;
 }
 
-/* Filas alternas para lectura fácil */
 tbody tr:nth-child(even) {
     background-color: var(--fondo-general);
 }
 
-/* Pill de Estados */
+.tabla-consultas td:first-child,
+.tabla-consultas th:first-child {
+    white-space: nowrap;
+}
+
 .estado-pill {
+    display: inline-block;
     padding: 6px 14px;
     border-radius: 20px;
     font-weight: bold;
@@ -134,94 +263,128 @@ tbody tr:nth-child(even) {
     text-transform: uppercase;
 }
 
+
 /* ============================================================
-   ESTILOS DEL MODAL (VENTANA FLOTANTE)
+   8. MENSAJE GLOBAL
+   ============================================================ */
+#mensaje {
+    text-align: center;
+    font-size: 0.85em;
+    margin-top: 20px;
+    color: var(--mauve-bark);
+}
+
+
+/* ============================================================
+   9. MODAL FACTURA
    ============================================================ */
 #modal-factura {
-    display: none; 
-    position: fixed; 
-    top: 0; left: 0; 
-    width: 100%; height: 100%; 
-    background: rgba(0,0,0,0.7); /* Fondo oscuro semitransparente */
-    z-index: 9999; 
+    display: none;
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.70);
+    z-index: 9999;
     overflow-y: auto;
     padding: 20px 0;
 }
 
-/* El contenedor blanco de la factura */
 #area-impresion {
-    background: white; 
-    width: 90%; 
-    max-width: 700px; 
-    margin: auto; 
-    padding: 40px; 
-    border-radius: 15px; 
-    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    background: var(--white);
+    width: 90%;
+    max-width: 700px;
+    margin: auto;
+    padding: 40px;
+    border-radius: var(--radio-lg);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
     position: relative;
 }
 
 
 /* ============================================================
-   MURO DE CONTENCIÓN ABSOLUTO PARA LA FACTURA DE OLIGAR CROCHET
+   10. MURO DE CONTENCIÓN PARA FACTURA
+   No tocar la identidad visual ya validada
    ============================================================ */
-
 #area-impresion * {
     all: revert;
 }
 
-/* 1. Incremento del tamaño del logo */
-#area-impresion img[alt="Logo"] { 
-    max-width: 140px !important; 
-    height: auto !important;
-}
-
-/* 2. Configuración de la Tabla de Productos */
 #area-impresion table {
     border-collapse: collapse !important;
     width: 100% !important;
     border: none !important;
 }
 
-/* Líneas tenues generales para todas las filas de la tabla */
 #area-impresion tr {
     border-bottom: 1px solid #E0E0E0 !important;
 }
 
-/* LÍNEA GRUESA: Forzamos el borde grueso específicamente en el encabezado (thead) */
 #area-impresion thead tr {
-    border-bottom: 4px solid #5D4037 !important; /* Color Mauve Bark oficial */
+    border-bottom: 4px solid #5D4037 !important;
 }
 
-/* 3. Limpieza de bordes y padding */
-#area-impresion th, #area-impresion td {
-    border: none !important; 
+#area-impresion th,
+#area-impresion td {
+    border: none !important;
     padding: 10px 5px !important;
 }
 
-/* 4. Quitamos la línea SOLO a la última fila del cuerpo para no chocar con totales */
-/* Importante: usamos 'tbody tr' para no afectar al encabezado 'thead' */
 #area-impresion tbody tr:last-child {
     border-bottom: none !important;
 }
 
-/* Aseguramos que las imágenes de los amigurumis no se descontrolen */
 #area-impresion .grid-imagenes img {
     max-width: 100% !important;
     border-radius: 10px !important;
 }
 
+
 /* ============================================================
-   ESTILOS DE IMPRESIÓN
+   11. IMPRESIÓN
    ============================================================ */
 @media print {
-    body * { visibility: hidden; }
-    #area-impresion, #area-impresion * { visibility: visible; }
+    body * {
+        visibility: hidden;
+    }
+
+    #area-impresion,
+    #area-impresion * {
+        visibility: visible;
+    }
+
     #area-impresion {
         position: absolute;
-        left: 0; top: 0;
+        left: 0;
+        top: 0;
         width: 100% !important;
         box-shadow: none !important;
         padding: 0;
     }
-    .ocultar-impresion { display: none !important; }
+
+    .ocultar-impresion {
+        display: none !important;
+    }
+}
+
+
+/* ============================================================
+   12. RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+    body {
+        padding: 12px;
+    }
+
+    .tarjeta,
+    section[id^="seccion-"] {
+        padding: 18px;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+        letter-spacing: 0.5px;
+    }
 }

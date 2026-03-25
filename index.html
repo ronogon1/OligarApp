@@ -1,213 +1,790 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Oligar App - Gestión de Crochet</title>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+    <title>Oligar App - Gestión del Negocio</title>
     <link rel="stylesheet" href="estilos.css">
     <script src="https://alcdn.msauth.net/browser/2.35.0/js/msal-browser.min.js"></script>
 </head>
 
 <body>
-
-    <div id="seccion-login" class="tarjeta" style="text-align: center; margin-top: 50px;">
+    <!-- ==========================================
+         1. ACCESO
+    ========================================== -->
+    <section
+        id="seccion-login"
+        class="tarjeta"
+        style="text-align: center; margin-top: 50px;"
+    >
         <div style="margin-bottom: 20px;">
-            <img src="logo_oligar_2.jpg" alt="Logo Oligar" style="width: 250px; height: auto; border-radius: 50%; border: 3px solid var(--mauve-bark); box-shadow: 0px 4px 8px rgba(0,0,0,0.1);">
+            <img
+                src="logo_oligar_2.jpg"
+                alt="Logo Oligar"
+                style="
+                    width: 250px;
+                    height: auto;
+                    border-radius: 50%;
+                    border: 3px solid var(--mauve-bark);
+                    box-shadow: 0px 4px 8px rgba(0,0,0,0.1);
+                "
+            >
         </div>
-        <h1>Oligar App</h1>
-        <p style="font-style: italic; margin-bottom: 30px;">Gestión del Negocio</p>
-        <button id="loginBtn" class="btn-enfoque">Conectar con Microsoft</button>
-    </div>
 
-    <div id="seccion-menu" style="display:none; text-align:center;">
+        <h1>Oligar App</h1>
+        <p style="font-style: italic; margin-bottom: 30px;">
+            Gestión del Negocio
+        </p>
+
+        <button id="loginBtn" class="btn-enfoque">
+            Conectar con Microsoft
+        </button>
+    </section>
+
+    <!-- ==========================================
+         2. MENÚ PRINCIPAL
+    ========================================== -->
+    <section
+        id="seccion-menu"
+        style="display: none; text-align: center;"
+    >
         <h2>Panel de Control</h2>
         <p style="margin-bottom: 25px;">Oligar Crochet - Bienvenida</p>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; max-width: 500px; margin: auto;">
-            <button onclick="navegar('registro-ventas-Crochet')" class="btn-normal" style="height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                <span style="font-size: 2em;">🧶</span> Nueva Venta Oligar Crochet
+
+        <div
+            style="
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 15px;
+                max-width: 500px;
+                margin: auto;
+            "
+        >
+            <button
+                onclick="navegar('registro-ventas-Crochet')"
+                class="btn-normal"
+                style="
+                    height: 100px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                "
+            >
+                <span style="font-size: 2em;">🧶</span>
+                Nueva Venta Oligar Crochet
             </button>
 
-            <button onclick="navegar('registro-ventas-Creaciones')" class="btn-normal" style="height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                <span style="font-size: 2em;">🛍️</span> Nueva Venta Oligar Creaciones
+            <button
+                onclick="navegar('registro-ventas-Creaciones')"
+                class="btn-normal"
+                style="
+                    height: 100px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                "
+            >
+                <span style="font-size: 2em;">🛍️</span>
+                Nueva Venta Oligar Creaciones
             </button>
 
-            <button onclick="navegar('gestion-facturas')" class="btn-normal" style="height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                <span style="font-size: 2em;">⚙️</span> Gestionar Facturas
+            <button
+                onclick="navegar('gestion-facturas')"
+                class="btn-normal"
+                style="
+                    height: 100px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                "
+            >
+                <span style="font-size: 2em;">⚙️</span>
+                Gestionar Facturas
             </button>
 
-            <button onclick="navegar('menu-reportes')" class="btn-normal" style="height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                <span style="font-size: 2em;">📊</span> Reportes
+            <button
+                onclick="navegar('menu-reportes')"
+                class="btn-normal"
+                style="
+                    height: 100px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                "
+            >
+                <span style="font-size: 2em;">📊</span>
+                Reportes
             </button>
 
-            <button onclick="navegar('consulta-tablas')" class="btn-normal" style="height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                <span style="font-size: 2em;">📋</span> Ver Tablas
+            <button
+                onclick="navegar('consulta-tablas')"
+                class="btn-normal"
+                style="
+                    height: 100px;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                "
+            >
+                <span style="font-size: 2em;">📋</span>
+                Ver Tablas
             </button>
 
-            <button onclick="location.reload()" class="btn-negativo" style="grid-column: span 2; margin-top: 10px;">
+            <button
+                onclick="location.reload()"
+                class="btn-negativo"
+                style="grid-column: span 2; margin-top: 10px;"
+            >
                 ❌ Cerrar Sesión
             </button>
         </div>
-    </div>
+    </section>
 
-    <div id="seccion-consulta-tablas" style="display:none;">
-        <button onclick="navegar('menu')" class="btn-normal">← Volver</button>
-        <button onclick="refrescarTablasManual()" class="btn-confirmar" style="float: right;">🔄 Actualizar Datos</button>
-        <div style="clear: both; margin-top: 20px;"></div>
+    <!-- ==========================================
+         3. CONSULTA DE TABLAS
+    ========================================== -->
+    <section id="seccion-consulta-tablas" style="display: none;">
+        <div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+            <button onclick="navegar('menu')" class="btn-normal">
+                ← Volver
+            </button>
+
+            <button
+                onclick="refrescarTablasManual()"
+                class="btn-confirmar"
+            >
+                🔄 Actualizar Datos
+            </button>
+        </div>
+
         <div id="tabla-facturas" class="tarjeta"></div>
         <div id="tabla-detalle" class="tarjeta"></div>
         <div id="tabla-clientes" class="tarjeta"></div>
-        <div id="tabla-anticipos" class="tarjeta"></div> 
-    </div>
+        <div id="tabla-anticipos" class="tarjeta"></div>
+    </section>
 
-    <div id="seccion-registro-ventas-Crochet" style="display:none; max-width: 600px; margin: auto;">
-        <button onclick="limpiarYRegresar()" class="btn-normal" style="margin-bottom: 20px;">← Volver</button>
+    <!-- ==========================================
+         4. NUEVA VENTA - OLIGAR CROCHET
+    ========================================== -->
+    <section
+        id="seccion-registro-ventas-Crochet"
+        style="display: none; max-width: 600px; margin: auto;"
+    >
+        <button
+            onclick="limpiarYRegresar()"
+            class="btn-normal"
+            style="margin-bottom: 20px;"
+        >
+            ← Volver
+        </button>
+
         <h3>Registro de Venta</h3>
-        
+
         <form id="formVentas" class="tarjeta">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-                <input type="hidden" id="v_cliente_id"> 
+            <div
+                style="
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 10px;
+                    margin-bottom: 20px;
+                "
+            >
+                <input type="hidden" id="v_cliente_id">
+
                 <div style="position: relative;">
-                    <input type="text" id="v_cliente" placeholder="Nombre del Cliente" required autocomplete="off" style="width: 100%;">
-                    <div id="sugerencias-clientes" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--dust-grey); z-index: 1000; max-height: 200px; overflow-y: auto; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"></div>
+                    <input
+                        type="text"
+                        id="v_cliente"
+                        placeholder="Nombre del Cliente"
+                        required
+                        autocomplete="off"
+                        style="width: 100%;"
+                    >
+
+                    <div
+                        id="sugerencias-clientes"
+                        style="
+                            position: absolute;
+                            top: 100%;
+                            left: 0;
+                            right: 0;
+                            background: white;
+                            border: 1px solid var(--dust-grey);
+                            z-index: 1000;
+                            max-height: 200px;
+                            overflow-y: auto;
+                            display: none;
+                            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                        "
+                    ></div>
                 </div>
-                <input type="date" id="v_fecha" required style="width: 100%;">
+
+                <input
+                    type="date"
+                    id="v_fecha"
+                    required
+                    style="width: 100%;"
+                >
             </div>
 
-            <div style="border: 2px solid var(--dust-grey); padding: 15px; border-radius: 8px; background: var(--fondo-general); margin-bottom: 20px;">
-                <h4 style="border:none; color: var(--mauve-bark);">🛍️ Productos </h4>
-                <div id="contenedor-productos"></div> 
-                <button type="button" onclick="agregarFilaProducto()" class="btn-normal" style="width: 100%; margin-top: 10px;">
+            <div
+                style="
+                    border: 2px solid var(--dust-grey);
+                    padding: 15px;
+                    border-radius: 8px;
+                    background: var(--fondo-general);
+                    margin-bottom: 20px;
+                "
+            >
+                <h4 style="border: none; color: var(--mauve-bark);">
+                    🛍️ Productos
+                </h4>
+
+                <div id="contenedor-productos"></div>
+
+                <button
+                    type="button"
+                    onclick="agregarFilaProducto()"
+                    class="btn-normal"
+                    style="width: 100%; margin-top: 10px;"
+                >
                     + Añadir Producto
                 </button>
             </div>
 
-            <div style="background: var(--dust-grey); padding: 15px; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 25px;">
-                <label>Envío (C$): <input type="number" id="v_envio" value="0" style="width: 100%;"></label>
-                <label>Desc. Global (C$): <input type="number" id="v_desc_global" value="0" style="width: 100%;"></label>
+            <div
+                style="
+                    background: var(--dust-grey);
+                    padding: 15px;
+                    border-radius: 8px;
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 10px;
+                    margin-bottom: 25px;
+                "
+            >
+                <label>
+                    Envío (C$):
+                    <input
+                        type="number"
+                        id="v_envio"
+                        value="0"
+                        style="width: 100%;"
+                    >
+                </label>
+
+                <label>
+                    Desc. Global (C$):
+                    <input
+                        type="number"
+                        id="v_desc_global"
+                        value="0"
+                        style="width: 100%;"
+                    >
+                </label>
             </div>
 
-            <div style="border: 2px solid var(--medium-jungle); padding: 15px; border-radius: 8px; background: var(--success-mint); margin-bottom: 20px;">
-                <h4 style="border:none; color: var(--mauve-bark);">💰 Anticipos / Pagos</h4>
-                <div id="contenedor-anticipos"></div> 
-                <button type="button" onclick="agregarFilaAnticipo()" class="btn-confirmar" style="width: 100%; margin-top: 10px;">
+            <div
+                style="
+                    border: 2px solid var(--medium-jungle);
+                    padding: 15px;
+                    border-radius: 8px;
+                    background: var(--success-mint);
+                    margin-bottom: 20px;
+                "
+            >
+                <h4 style="border: none; color: var(--mauve-bark);">
+                    💰 Anticipos / Pagos
+                </h4>
+
+                <div id="contenedor-anticipos"></div>
+
+                <button
+                    type="button"
+                    onclick="agregarFilaAnticipo()"
+                    class="btn-confirmar"
+                    style="width: 100%; margin-top: 10px;"
+                >
                     + Agregar Pago
                 </button>
             </div>
 
-            <button type="submit" class="btn-confirmar" style="width:100%; padding: 15px; font-size: 1.1em;">
+            <button
+                type="submit"
+                class="btn-confirmar"
+                style="width: 100%; padding: 15px; font-size: 1.1em;"
+            >
                 Guardar Venta e Imprimir Factura
             </button>
         </form>
-    </div>
+    </section>
 
-    <div id="seccion-gestion-facturas" style="display:none; max-width: 700px; margin: auto;">
-        <button type="button" onclick="limpiarYRegresar()" class="btn-normal" style="margin-bottom: 20px;">← Volver</button>
+    <!-- ==========================================
+         5. NUEVA VENTA - OLIGAR CREACIONES
+         (por ahora espejo funcional)
+    ========================================== -->
+    <section
+        id="seccion-registro-ventas-Creaciones"
+        style="display: none; max-width: 600px; margin: auto;"
+    >
+        <button
+            onclick="navegar('menu')"
+            class="btn-normal"
+            style="margin-bottom: 20px;"
+        >
+            ← Volver
+        </button>
+
+        <h3>Nueva Venta Oligar Creaciones</h3>
+
+        <div class="tarjeta" style="text-align: center;">
+            <p style="margin-bottom: 10px;">
+                Esta sección se integrará usando la misma lógica de registro
+                de ventas y las mismas tablas.
+            </p>
+            <p style="color: #666; margin-bottom: 0;">
+                Pendiente de adaptar identidad visual y factura propia.
+            </p>
+        </div>
+    </section>
+
+    <!-- ==========================================
+         6. GESTIÓN DE FACTURAS
+    ========================================== -->
+    <section
+        id="seccion-gestion-facturas"
+        style="display: none; max-width: 700px; margin: auto;"
+    >
+        <button
+            type="button"
+            onclick="navegar('menu')"
+            class="btn-normal"
+            style="margin-bottom: 20px;"
+        >
+            ← Volver
+        </button>
+
         <h3>Gestión de Facturas</h3>
-        
-        <div style="display:flex; gap:10px; margin-bottom:20px;">
-            <input type="text" id="busqueda_factura" placeholder="ID de Factura..." style="flex:1;">
-            <button onclick="previsualizarFactura()" class="btn-enfoque">🔍 Cargar</button>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <input
+                type="text"
+                id="busqueda_factura"
+                placeholder="ID de Factura..."
+                style="flex: 1;"
+            >
+            <button onclick="previsualizarFactura()" class="btn-enfoque">
+                🔍 Cargar
+            </button>
         </div>
 
-        <div id="panel-previsualizacion" style="display:none;" class="tarjeta">
-            <div id="status-badge" style="text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 2px solid var(--dust-grey);">
-                <strong>ESTADO:</strong> <span id="txt-status">---</span>
+        <div id="panel-previsualizacion" class="tarjeta" style="display: none;">
+            <div
+                id="status-badge"
+                style="
+                    text-align: center;
+                    padding: 10px;
+                    border-radius: 8px;
+                    margin-bottom: 15px;
+                    border: 2px solid var(--dust-grey);
+                "
+            >
+                <strong>ESTADO:</strong>
+                <span id="txt-status">---</span>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-                <div><strong>Cliente:</strong><input type="text" id="pre_cliente" disabled style="width:100%;"></div>
-                <div><strong>Fecha:</strong><input type="text" id="pre_fecha" disabled style="width:100%;"></div>
-                <div><strong>Total:</strong><input type="text" id="pre_total" disabled style="width:100%; font-weight:bold;"></div>
-                <div><strong>Saldo:</strong><input type="text" id="pre_saldo" disabled style="width:100%;"></div>
+            <div
+                style="
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 15px;
+                    margin-bottom: 20px;
+                "
+            >
+                <div>
+                    <strong>Cliente:</strong>
+                    <input
+                        type="text"
+                        id="pre_cliente"
+                        disabled
+                        style="width: 100%;"
+                    >
+                </div>
+
+                <div>
+                    <strong>Fecha:</strong>
+                    <input
+                        type="text"
+                        id="pre_fecha"
+                        disabled
+                        style="width: 100%;"
+                    >
+                </div>
+
+                <div>
+                    <strong>Total:</strong>
+                    <input
+                        type="text"
+                        id="pre_total"
+                        disabled
+                        style="width: 100%; font-weight: bold;"
+                    >
+                </div>
+
+                <div>
+                    <strong>Saldo:</strong>
+                    <input
+                        type="text"
+                        id="pre_saldo"
+                        disabled
+                        style="width: 100%;"
+                    >
+                </div>
             </div>
 
-            <div id="acciones-factura" style="display:flex; flex-wrap: wrap; gap:10px; justify-content: center; border-top: 1px solid var(--dust-grey); padding-top: 15px;">
-                <button id="btn-pre-editar" class="btn-normal btn-activa">✏️ Editar</button>
-                <button id="btn-pre-costos" class="btn-normal btn-activa" onclick="abrirSeccionInterna('costos')">💰 Cargar Costos</button>
-                <button id="btn-pre-envio" class="btn-normal btn-activa" onclick="abrirSeccionInterna('envio')">🚚 Programar Envío</button>
-                <button id="btn-pre-anular" class="btn-negativo btn-activa">🚫 Anular</button>
-                <button id="btn-pre-imprimir" class="btn-normal">🖨️ Reimprimir</button>
-                <button id="btn-pre-activar" class="btn-confirmar" style="display:none;">✅ Reactivar</button>
+            <div
+                id="acciones-factura"
+                style="
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                    justify-content: center;
+                    border-top: 1px solid var(--dust-grey);
+                    padding-top: 15px;
+                "
+            >
+                <button id="btn-pre-editar" class="btn-normal">
+                    ✏️ Editar
+                </button>
+
+                <button id="btn-pre-costos" class="btn-normal">
+                    💰 Cargar Costos
+                </button>
+
+                <button id="btn-pre-envio" class="btn-normal">
+                    🚚 Programar Envío
+                </button>
+
+                <button id="btn-pre-anular" class="btn-negativo">
+                    🚫 Anular
+                </button>
+
+                <button id="btn-pre-imprimir" class="btn-normal">
+                    🖨️ Reimprimir
+                </button>
+
+                <button
+                    id="btn-pre-activar"
+                    class="btn-confirmar"
+                    style="display: none;"
+                >
+                    ✅ Reactivar
+                </button>
             </div>
 
-            <div id="sub-seccion-costos" style="display:none; margin-top:20px; padding:15px; border: 1px solid var(--orchid-light); border-radius: 8px;">
+            <div
+                id="sub-seccion-costos"
+                style="
+                    display: none;
+                    margin-top: 20px;
+                    padding: 15px;
+                    border: 1px solid var(--orchid-light);
+                    border-radius: 8px;
+                "
+            >
                 <h4>💰 Costos de Producción</h4>
-                <table style="width:100%; font-size: 0.9em; margin-bottom: 10px;">
+
+                <table
+                    style="width: 100%; font-size: 0.9em; margin-bottom: 10px;"
+                >
                     <thead>
                         <tr style="background: var(--fondo-general);">
-                            <th>Producto</th><th>MO</th><th>Mat.</th>
+                            <th>Producto</th>
+                            <th>MO</th>
+                            <th>Mat.</th>
                         </tr>
                     </thead>
                     <tbody id="body-costos-pre"></tbody>
                 </table>
-                <button class="btn-confirmar" style="width:100%;" onclick="guardarCostosDesdeEdicion()">Guardar Costos en Excel</button>
+
+                <button
+                    class="btn-confirmar"
+                    style="width: 100%;"
+                >
+                    Guardar Costos en Excel
+                </button>
             </div>
 
-            <div id="sub-seccion-envio" style="display:none; margin-top:20px; padding:15px; border: 1px solid var(--soft-lilac); border-radius: 8px;">
+            <div
+                id="sub-seccion-envio"
+                style="
+                    display: none;
+                    margin-top: 20px;
+                    padding: 15px;
+                    border: 1px solid var(--soft-lilac);
+                    border-radius: 8px;
+                "
+            >
                 <h4>🚚 Logística y Ubicación</h4>
-                <input type="text" id="coordenada_pre" placeholder="Link de Google Maps o Coordenadas" class="input-app" style="width:100%; margin-bottom:10px;">
-                <div style="margin-bottom:10px;">
+
+                <input
+                    type="text"
+                    id="coordenada_pre"
+                    placeholder="Link de Google Maps o Coordenadas"
+                    style="width: 100%; margin-bottom: 10px;"
+                >
+
+                <div style="margin-bottom: 10px;">
                     <small>¿Guardar en qué dirección del cliente?</small><br>
-                    <input type="radio" name="dir_pre" value="1"> Dir 1 | <input type="radio" name="dir_pre" value="2"> Dir 2 | <input type="radio" name="dir_pre" value="3"> Dir 3
+                    <input type="radio" name="dir_pre" value="1"> Dir 1
+                    |
+                    <input type="radio" name="dir_pre" value="2"> Dir 2
+                    |
+                    <input type="radio" name="dir_pre" value="3"> Dir 3
                 </div>
-                <label>Monto pagado por envío (C$):</label>
-                <input type="number" id="costo_envio_pre" class="input-app" style="width:100%;">
-                <button class="btn-confirmar" style="width:100%; margin-top:10px;" onclick="guardarEnvioDesdeEdicion()">Actualizar Logística</button>
+
+                <label for="costo_envio_pre">Monto pagado por envío (C$):</label>
+                <input
+                    type="number"
+                    id="costo_envio_pre"
+                    style="width: 100%;"
+                >
+
+                <button
+                    class="btn-confirmar"
+                    style="width: 100%; margin-top: 10px;"
+                >
+                    Actualizar Logística
+                </button>
             </div>
         </div>
-    </div>
+    </section>
 
-    <div id="modal-factura" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; overflow-y:auto; padding:20px;">
-        <div id="area-impresion" class="tarjeta" style="max-width:800px; margin:auto; background:white;">
+    <!-- ==========================================
+         7. MODAL FACTURA
+         (se mantiene)
+    ========================================== -->
+    <div
+        id="modal-factura"
+        style="
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+            overflow-y: auto;
+            padding: 20px;
+        "
+    >
+        <div
+            id="area-impresion"
+            class="tarjeta"
+            style="max-width: 800px; margin: auto; background: white;"
+        >
             <div id="detalle-factura"></div>
-            <div class="ocultar-impresion" style="margin-top:30px; text-align:center; display:flex; justify-content:center; gap:10px; padding-bottom:20px;">
-                <button onclick="window.print()" class="btn-enfoque">🖨️ Imprimir</button>
-                <button onclick="document.getElementById('modal-factura').style.display='none'" class="btn-normal">Cerrar</button>
+
+            <div
+                class="ocultar-impresion"
+                style="
+                    margin-top: 30px;
+                    text-align: center;
+                    display: flex;
+                    justify-content: center;
+                    gap: 10px;
+                    padding-bottom: 20px;
+                "
+            >
+                <button onclick="window.print()" class="btn-enfoque">
+                    🖨️ Imprimir
+                </button>
+
+                <button
+                    onclick="document.getElementById('modal-factura').style.display='none'"
+                    class="btn-normal"
+                >
+                    Cerrar
+                </button>
             </div>
         </div>
     </div>
 
-    <div id="seccion-menu-reportes" style="display:none; text-align:center; max-width: 500px; margin: auto;">
-        <button onclick="navegar('menu')" class="btn-normal" style="margin-bottom: 20px; float: left;">← Volver</button>
+    <!-- ==========================================
+         8. MENÚ DE REPORTES
+    ========================================== -->
+    <section
+        id="seccion-menu-reportes"
+        style="display: none; text-align: center; max-width: 500px; margin: auto;"
+    >
+        <button
+            onclick="navegar('menu')"
+            class="btn-normal"
+            style="margin-bottom: 20px; float: left;"
+        >
+            ← Volver
+        </button>
+
         <div style="clear: both;"></div>
+
         <h3>📊 Centro de Reportes</h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
-            <button onclick="irAReporteVentas()" class="btn-normal" style="height: 120px;">
-                <span style="font-size: 2em;">📅</span><br>Ventas
+
+        <div
+            style="
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 15px;
+                margin-top: 20px;
+            "
+        >
+            <button
+                onclick="irAReporteVentas()"
+                class="btn-normal"
+                style="height: 120px;"
+            >
+                <span style="font-size: 2em;">📅</span><br>
+                Ventas
             </button>
-            <button onclick="mostrarReporteGanancias()" class="btn-normal" style="height: 120px;">
-                <span style="font-size: 2em;">💸</span><br>Ganancias
+
+            <button
+                onclick="mostrarReporteGanancias()"
+                class="btn-normal"
+                style="height: 120px;"
+            >
+                <span style="font-size: 2em;">💸</span><br>
+                Ganancias
             </button>
-            <button onclick="alert('Próximamente')" class="btn-normal" style="height: 120px; opacity: 0.6; grid-column: span 2;">
-                <span style="font-size: 2em;">🧸</span><br>Inventario de Stock
+
+            <button
+                onclick="alert('Próximamente')"
+                class="btn-normal"
+                style="height: 120px; opacity: 0.6; grid-column: span 2;"
+            >
+                <span style="font-size: 2em;">🧸</span><br>
+                Inventario de Stock
             </button>
         </div>
-    </div>
+    </section>
 
-    <div id="seccion-pantalla-reporte-ventas" style="display:none; max-width: 900px; margin: auto;">
-        <button onclick="navegar('menu-reportes')" class="btn-normal" style="margin-bottom: 20px;">← Volver</button>
+    <!-- ==========================================
+         9. REPORTE DE VENTAS
+    ========================================== -->
+    <section
+        id="seccion-pantalla-reporte-ventas"
+        style="display: none; max-width: 900px; margin: auto;"
+    >
+        <button
+            onclick="navegar('menu-reportes')"
+            class="btn-normal"
+            style="margin-bottom: 20px;"
+        >
+            ← Volver
+        </button>
+
         <div class="tarjeta">
             <h3>📊 Reporte de Ventas</h3>
+
+            <div
+                style="
+                    display: grid;
+                    grid-template-columns: 1fr 1fr 1fr auto;
+                    gap: 10px;
+                    margin-bottom: 20px;
+                    align-items: end;
+                "
+            >
+                <div>
+                    <label for="filtro-fecha-inicio">Fecha inicio</label>
+                    <input
+                        type="date"
+                        id="filtro-fecha-inicio"
+                        style="width: 100%;"
+                    >
+                </div>
+
+                <div>
+                    <label for="filtro-fecha-fin">Fecha fin</label>
+                    <input
+                        type="date"
+                        id="filtro-fecha-fin"
+                        style="width: 100%;"
+                    >
+                </div>
+
+                <div>
+                    <label for="filtro-estado">Estado</label>
+                    <select id="filtro-estado" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
+                        <option value="Cancelada">Sólo canceladas</option>
+                        <option value="Activa">Sólo activas</option>
+                        <option value="Anulada">Sólo anuladas</option>
+                        <option value="TODAS">Todas</option>
+                    </select>
+                </div>
+
+                <button onclick="aplicarFiltrosReporteVentas()" class="btn-enfoque">
+                    Filtrar
+                </button>
+            </div>
+
             <div id="lista-facturas-reporte"></div>
         </div>
-    </div>
+    </section>
 
-    <div id="seccion-pantalla-reporte-ganancias" style="display:none; max-width: 600px; margin: auto;">
-        <button onclick="navegar('menu-reportes')" class="btn-normal" style="margin-bottom: 20px;">← Volver</button>
+    <!-- ==========================================
+         10. REPORTE DE GANANCIAS
+    ========================================== -->
+    <section
+        id="seccion-pantalla-reporte-ganancias"
+        style="display: none; max-width: 600px; margin: auto;"
+    >
+        <button
+            onclick="navegar('menu-reportes')"
+            class="btn-normal"
+            style="margin-bottom: 20px;"
+        >
+            ← Volver
+        </button>
+
         <div class="tarjeta" style="text-align: center;">
             <h3>💸 Utilidad Neta Real</h3>
             <p>Ventas - Costos de Producción - Envíos</p>
-            <h1 id="total-ganancia-display" style="color: var(--medium-jungle); font-size: 3em;">C$ 0.00</h1>
+
+            <h1
+                id="total-ganancia-display"
+                style="color: var(--medium-jungle); font-size: 3em;"
+            >
+                C$ 0.00
+            </h1>
+
             <hr>
             <small>Basado en facturas con costos cargados.</small>
         </div>
-    </div>
+    </section>
 
-    <p id="mensaje" style="text-align: center; font-size: 0.8em; margin-top: 20px; color: var(--mauve-bark);">Estado: Desconectado</p>
-    
+    <!-- ==========================================
+         11. MENSAJE GLOBAL
+    ========================================== -->
+    <p
+        id="mensaje"
+        style="
+            text-align: center;
+            font-size: 0.8em;
+            margin-top: 20px;
+            color: var(--mauve-bark);
+        "
+    >
+        Estado: Desconectado
+    </p>
+
     <script src="app.js"></script>
-
 </body>
 </html>

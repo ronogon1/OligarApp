@@ -1,139 +1,367 @@
 // ==========================================
-// 1. CONFIGURACIÓN Y CONSTANTES
+// 1. CONFIGURACIÓN GENERAL
 // ==========================================
-const msalConfig = {
-    auth: {
-        clientId: "894b1f45-66d7-4b1a-995d-04876954ed54",
-        authority: "https://login.microsoftonline.com/common",
-        redirectUri: "https://ronogon1.github.io/OligarApp/"
-    }
+const CONFIG = {
+    msal: {
+        auth: {
+            clientId: "894b1f45-66d7-4b1a-995d-04876954ed54",
+            authority: "https://login.microsoftonline.com/common",
+            redirectUri: "https://ronogon1.github.io/OligarApp/"
+        }
+    },
+
+    graph: {
+        driveId: "56163DD91D08F884",
+        fileId: "56163DD91D08F884!s67e52d563b4b4c59911dbd743552ac7d",
+        productosFolderId: "56163DD91D08F884!saaf6f36dee0d406092c3d80f859b3981"
+    },
+
+    tablas: {
+        facturas: "TFacturas",
+        detalle: "TDetalle",
+        anticipos: "TAnticipos",
+        clientes: "TClientes"
+    },
+
+    secciones: [
+        "seccion-login",
+        "seccion-menu",
+        "seccion-consulta-tablas",
+        "seccion-registro-ventas-Crochet",
+        "seccion-registro-ventas-Creaciones",
+        "seccion-gestion-facturas",
+        "seccion-menu-reportes",
+        "seccion-pantalla-reporte-ventas",
+        "seccion-pantalla-reporte-ganancias",
+        "seccion-carga-costos",
+        "seccion-programar-envio"
+    ]
 };
 
-const driveId = "56163DD91D08F884";
-const fileId = "56163DD91D08F884!s67e52d563b4b4c59911dbd743552ac7d";
-const graphBaseUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileId}`;
-const productosFolderId = "56163DD91D08F884!saaf6f36dee0d406092c3d80f859b3981";
-const msalInstance = new msal.PublicClientApplication(msalConfig);
-
-let listaClientesGlobal = []; // Memoria para el buscador rápido
+const GRAPH_BASE_URL =
+    `https://graph.microsoft.com/v1.0/drives/${CONFIG.graph.driveId}/items/${CONFIG.graph.fileId}`;
 
 // ==========================================
-// 2. AUTENTICACIÓN
+// 2. ESTADO GLOBAL
+// ==========================================
+const appState = {
+    clientes: [],
+    tablas: {},
+    facturaActual: null
+};
+
+// ==========================================
+// 3. INSTANCIA MSAL
+// ==========================================
+const msalInstance = new msal.PublicClientApplication(CONFIG.msal);
+
+// ==========================================
+// 4. UTILIDADES BÁSICAS DE UI
+// ==========================================
+function setMensaje(texto) {
+    const el = document.getElementById("mensaje");
+    if (el) el.innerText = texto;
+}
+
+// ==========================================
+// 5. AUTENTICACIÓN
 // ==========================================
 async function getAuthToken() {
     const account = msalInstance.getAllAccounts()[0];
-    if (!account) throw new Error("Sesión no iniciada.");
+
+    if (!account) {
+        throw new Error("Sesión no iniciada.");
+    }
+
     try {
-        const resp = await msalInstance.acquireTokenSilent({ scopes: ["Files.ReadWrite"], account });
-        return resp.accessToken;
-    } catch (e) {
-        const resp = await msalInstance.acquireTokenPopup({ scopes: ["Files.ReadWrite"] });
-        return resp.accessToken;
+        const response = await msalInstance.acquireTokenSilent({
+            scopes: ["Files.ReadWrite"],
+            account
+        });
+
+        return response.accessToken;
+    } catch (error) {
+        const response = await msalInstance.acquireTokenPopup({
+            scopes: ["Files.ReadWrite"]
+        });
+
+        return response.accessToken;
     }
 }
 
-document.getElementById('loginBtn').onclick = async () => {
+async function iniciarSesion() {
     try {
-        await msalInstance.loginPopup({ scopes: ["user.read", "Files.ReadWrite"] });
-        document.getElementById('mensaje').innerText = "Conectado correctamente.";
+        await msalInstance.loginPopup({
+            scopes: ["user.read", "Files.ReadWrite"]
+        });
+
+        setMensaje("Conectado. Cargando datos...");
+
         await actualizarMemoriaClientes();
         await leerExcel();
-        navegar('menu');
-    } catch (err) { alert("Error de Login: " + err.message); }
-};
+
+        navegar("menu");
+    } catch (error) {
+        alert("Error de Login: " + error.message);
+    }
+}
+
+const loginBtn = document.getElementById("loginBtn");
+if (loginBtn) {
+    loginBtn.onclick = iniciarSesion;
+}
 
 // ==========================================
-// 3. NAVEGACIÓN Y UI
+// 6. NAVEGACIÓN Y UI
 // ==========================================
-
 function navegar(pantalla) {
-    const secciones = [
-        'seccion-login', 
-        'seccion-menu', 
-        'seccion-consulta-tablas', 
-        'seccion-registro-ventas-Crochet', 
-        'seccion-registro-ventas-Creaciones',
-        'seccion-gestion-facturas',
-        'seccion-menu-reportes',
-        'seccion-pantalla-reporte-ventas',
-        'seccion-carga-costos',
-        'seccion-programar-envio',
-        'seccion-pantalla-reporte-ganancias'
-    ];
+    const labelEstado =
+        document.getElementById("estado-edicion") ||
+        document.querySelector("header em");
 
-    // 1. Limpieza de encabezados de edición
-    const labelEstado = document.getElementById('estado-edicion') || document.querySelector('header em'); 
-    const statusMsg = document.querySelector('header p'); 
+    const statusMsg = document.querySelector("header p");
 
-    if (pantalla !== 'registro-ventas-Crochet') {
-        if (labelEstado) labelEstado.innerText = '';
-        if (statusMsg) statusMsg.innerText = 'Conectado correctamente.';
+    if (pantalla !== "registro-ventas-Crochet") {
+        if (labelEstado) labelEstado.innerText = "";
+        if (statusMsg) statusMsg.innerText = "Conectado correctamente.";
     }
 
-    // 2. Ocultar todas las secciones
-    secciones.forEach(id => {
+    CONFIG.secciones.forEach((id) => {
         const el = document.getElementById(id);
-        if (el) el.style.display = 'none';
+        if (el) el.style.display = "none";
     });
-    
-    // 3. Mostrar destino y ejecutar lógica específica
-    const destino = document.getElementById('seccion-' + pantalla);
-    if (destino) {
-        destino.style.display = 'block';
 
-        // Lógica para Reporte de Ventas: LIMPIEZA INICIAL
-        if (pantalla === 'pantalla-reporte-ventas') {
-            // Limpiamos la tabla para que no cargue datos viejos o automáticos
-            const contenedor = document.getElementById('lista-facturas-reporte');
-            if (contenedor) contenedor.innerHTML = '';
-            
-            // Opcional: Podrías resetear los filtros a "Hoy" o dejarlos como están
-            console.log("Pantalla de reportes lista. Esperando acción del usuario.");
-        }
+    const destino = document.getElementById("seccion-" + pantalla);
 
-        if (pantalla === 'registro-ventas-Crochet') {
-            const form = document.getElementById('formVentas');
-            if (form.dataset.modo !== "edit") {
-                document.getElementById('contenedor-productos').innerHTML = '';
+    if (!destino) {
+        console.warn(`No existe la sección: seccion-${pantalla}`);
+        return;
+    }
+
+    destino.style.display = "block";
+
+    if (pantalla === "pantalla-reporte-ventas") {
+        const contenedor = document.getElementById("lista-facturas-reporte");
+        if (contenedor) contenedor.innerHTML = "";
+        console.log("Pantalla de reportes lista. Esperando acción del usuario.");
+    }
+
+    if (pantalla === "registro-ventas-Crochet") {
+        const form = document.getElementById("formVentas");
+
+        if (form && form.dataset.modo !== "edit") {
+            const contenedorProductos =
+                document.getElementById("contenedor-productos");
+
+            if (contenedorProductos) {
+                contenedorProductos.innerHTML = "";
                 agregarFilaProducto();
-                if (labelEstado) labelEstado.innerText = '';
             }
+
+            if (labelEstado) labelEstado.innerText = "";
+        }
+    }
+
+    if (pantalla === "consulta-tablas") {
+        refrescarTablasManual();
+    }
+
+    if (pantalla === "gestion-facturas") {
+        const panel = document.getElementById("panel-previsualizacion");
+        const inputBusqueda = document.getElementById("busqueda_factura");
+
+        if (panel) panel.style.display = "none";
+        if (inputBusqueda) inputBusqueda.value = "";
+    }
+}
+
+
+// ==========================================
+// 7. LECTURA / ESCRITURA EXCEL
+// ==========================================
+async function leerTabla(nombreTabla) {
+    const token = await getAuthToken();
+    const url = `${GRAPH_BASE_URL}/workbook/tables/${nombreTabla}/range?t=${Date.now()}`;
+
+    const response = await fetch(url, {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error(`Error al leer la tabla ${nombreTabla}`);
+    }
+
+    const data = await response.json();
+    return data.values || [];
+}
+
+async function leerExcel() {
+    const resultados = {};
+    const tablas = Object.values(CONFIG.tablas);
+
+    for (const nombreTabla of tablas) {
+        try {
+            resultados[nombreTabla] = await leerTabla(nombreTabla);
+            console.log(`[leerExcel] Datos de ${nombreTabla} obtenidos con éxito.`);
+        } catch (error) {
+            console.error(`[leerExcel] Fallo en ${nombreTabla}:`, error);
+            resultados[nombreTabla] = [];
+        }
+    }
+
+    appState.tablas = resultados;
+    return resultados;
+}
+
+async function escribirFilas(nombreTabla, filas) {
+    const token = await getAuthToken();
+    const url = `${GRAPH_BASE_URL}/workbook/tables/${nombreTabla}/rows`;
+
+    const response = await fetch(url, {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ values: filas })
+    });
+
+    return response.ok;
+}
+
+async function eliminarRegistrosPrevios(facturaID) {
+    const token = await getAuthToken();
+    const tablas = [
+        CONFIG.tablas.facturas,
+        CONFIG.tablas.detalle,
+        CONFIG.tablas.anticipos
+    ];
+
+    for (const nombreTabla of tablas) {
+        const valores = await leerTabla(nombreTabla);
+
+        if (!valores || valores.length <= 1) {
+            continue;
         }
 
-        if (pantalla === 'consulta-tablas') { 
-            refrescarTablasManual(); 
-        }
+        const indiceColumnaId =
+            nombreTabla === CONFIG.tablas.anticipos ? 1 : 0;
 
-        if (pantalla === 'gestion-facturas') {
-            const panel = document.getElementById('panel-previsualizacion');
-            if (panel) panel.style.display = 'none';
-            const inputBusqueda = document.getElementById('busqueda_factura');
-            if (inputBusqueda) inputBusqueda.value = '';
+        const filasAEliminar = valores
+            .slice(1)
+            .map((fila, index) => ({
+                id: fila[indiceColumnaId],
+                index
+            }))
+            .filter(
+                (item) =>
+                    item.id && item.id.toString() === facturaID.toString()
+            )
+            .reverse();
+
+        for (const fila of filasAEliminar) {
+            await fetch(
+                `${GRAPH_BASE_URL}/workbook/tables/${nombreTabla}/rows/itemAt(index=${fila.index})`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                }
+            );
         }
     }
 }
 
+
+// ==========================================
+// 8. CLIENTES
+// ==========================================
+async function actualizarMemoriaClientes() {
+    try {
+        const valores = await leerTabla(CONFIG.tablas.clientes);
+
+        appState.clientes = valores.slice(1).map((fila) => ({
+            id: fila[0],
+            nombre: fila[1]
+        }));
+
+        console.log(
+            "Memoria de clientes lista:",
+            appState.clientes.length
+        );
+    } catch (error) {
+        console.error("Error cargando clientes:", error);
+        appState.clientes = [];
+    }
+}
+
+async function asegurarRegistroCliente(nombreCliente) {
+    if (!nombreCliente) return;
+
+    const nombreNormalizado = nombreCliente.trim().toLowerCase();
+    const valores = await leerTabla(CONFIG.tablas.clientes);
+
+    const existe = valores.some((fila, index) => {
+        if (index === 0) return false;
+        return (
+            fila[1] &&
+            fila[1].toString().trim().toLowerCase() === nombreNormalizado
+        );
+    });
+
+    if (existe) {
+        return;
+    }
+
+    const nuevoId = `C-${Date.now().toString().slice(-6)}`;
+    const nuevaFila = [
+        nuevoId,
+        nombreCliente.trim(),
+        "",
+        "",
+        "",
+        "",
+        "Registrado desde factura"
+    ];
+
+    const ok = await escribirFilas(CONFIG.tablas.clientes, [nuevaFila]);
+
+    if (ok) {
+        await actualizarMemoriaClientes();
+        console.log(`Cliente nuevo registrado: ${nombreCliente}`);
+    }
+}
+
+// ==========================================
+// 9. UI DINÁMICA DE VENTA
+// ==========================================
 function agregarFilaProducto() {
-    const contenedor = document.getElementById('contenedor-productos');
-    const div = document.createElement('div');
-    
-    // Aplicamos estilos a la "tarjeta" contenedora para que la X no se salga
-    div.className = 'fila-producto tarjeta'; 
+    const contenedor = document.getElementById("contenedor-productos");
+    if (!contenedor) return;
+
+    const div = document.createElement("div");
+    div.className = "fila-producto tarjeta";
     div.style.padding = "12px";
     div.style.marginBottom = "15px";
     div.style.border = "1px solid #ddd";
     div.style.borderRadius = "8px";
     div.style.background = "#fff";
     div.dataset.fileid = "sin_foto";
-    
+
     div.innerHTML = `
         <div style="display:grid; grid-template-columns: 1fr 70px 90px 30px; gap:8px; align-items: center; margin-bottom:10px;">
             <input type="text" class="p_nombre" placeholder="Producto" required style="width:100%;">
             <input type="number" class="p_cantidad" placeholder="Cant" min="1" required style="width:100%;">
             <input type="number" class="p_precio" placeholder="Precio" required style="width:100%;">
-            
-            <button type="button" onclick="this.closest('.fila-producto').remove()" 
-                style="color:#e53935; background:#ffebee; border:1px solid #ffcdd2; border-radius:50%; width:25px; height:25px; cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
+
+            <button
+                type="button"
+                onclick="this.closest('.fila-producto').remove()"
+                style="color:#e53935; background:#ffebee; border:1px solid #ffcdd2; border-radius:50%; width:25px; height:25px; cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:center; padding:0;"
+            >✕</button>
         </div>
 
         <div style="display:flex; gap:10px; align-items: center;">
@@ -141,542 +369,307 @@ function agregarFilaProducto() {
                 <input type="number" class="p_descuento" placeholder="Descuento C$" style="width:100%;">
             </div>
             <div style="flex:1.5;">
-                <input type="file" class="p_imagen" accept="image/*" style="width:100%; font-size: 0.8em;">
+                <input type="file" class="p_imagen" accept="image/*" style="width:100%; font-size:0.8em;">
             </div>
         </div>
     `;
+
+    contenedor.appendChild(div);
+}
+
+function agregarFilaAnticipo(datos = null) {
+    const contenedor = document.getElementById("contenedor-anticipos");
+    if (!contenedor) return;
+
+    const div = document.createElement("div");
+    div.className = "fila-anticipo";
+
+    const hoy = new Date().toISOString().split("T")[0];
+    const fecha = datos?.fecha || hoy;
+    const monto = datos?.monto || "";
+    const nota = datos?.nota || "";
+
+    div.innerHTML = `
+        <div style="display:grid; grid-template-columns: 1.2fr 1fr 2fr 30px; gap:8px; align-items: center; margin-bottom:10px; background:#fff; padding:10px; border:1px solid #eee; border-radius:5px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <input type="date" class="a_fecha" value="${fecha}" required style="width:100%;">
+            <input type="number" class="a_monto" placeholder="Monto" value="${monto}" required style="width:100%;">
+            <input type="text" class="a_comentario" placeholder="Efectivo, Transferencia, etc." value="${nota}" style="width:100%;">
+
+            <button
+                type="button"
+                onclick="this.closest('.fila-anticipo').remove()"
+                style="color:#c62828; background:#ffeeee; border:1px solid #ffcdd2; border-radius:50%; width:25px; height:25px; cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:center; padding:0;"
+            >✕</button>
+        </div>
+    `;
+
     contenedor.appendChild(div);
 }
 
 
-// --- LÓGICA DEL BUSCADOR DE CLIENTES ---
-async function actualizarMemoriaClientes() {
-    try {
-        const token = await getAuthToken();
-        const res = await fetch(`${graphBaseUrl}/workbook/tables/TClientes/range`, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
-        });
-        const data = await res.json();
-        if (data.values) {
-            // Guardamos objetos {id, nombre} para mayor precisión
-            listaClientesGlobal = data.values.slice(1).map(f => ({ id: f[0], nombre: f[1] }));
-            console.log("Buscador: Clientes cargados", listaClientesGlobal.length);
-        }
-    } catch (e) { console.error("Error cargando clientes:", e); }
-}
-
-
-document.getElementById('v_cliente').addEventListener('input', function(e) {
-    const busqueda = e.target.value.toLowerCase();
-    const contenedor = document.getElementById('sugerencias-clientes');
-    
-    if (busqueda.length < 1) {
-        contenedor.style.display = 'none';
-        return;
-    }
-
-    const matches = listaClientesGlobal.filter(c => 
-        c.nombre && c.nombre.toString().toLowerCase().includes(busqueda)
-    );
-
-    if (matches.length > 0) {
-        contenedor.innerHTML = matches.map(c => `
-            <div class="sugerencia-item" onclick="seleccionarClienteSug('${c.nombre}')">
-                ${c.nombre}
-            </div>
-        `).join('');
-        contenedor.style.display = 'block';
-    } else {
-        contenedor.style.display = 'none';
-    }
-});
-
-
+// ==========================================
+// 10. BUSCADOR DE CLIENTES
+// ==========================================
 function seleccionarClienteSug(nombre) {
-    document.getElementById('v_cliente').value = nombre;
-    document.getElementById('sugerencias-clientes').style.display = 'none';
+    const inputCliente = document.getElementById("v_cliente");
+    const sugerencias = document.getElementById("sugerencias-clientes");
+
+    if (inputCliente) inputCliente.value = nombre;
+    if (sugerencias) sugerencias.style.display = "none";
 }
 
-document.addEventListener('click', (e) => {
-    if (e.target.id !== 'v_cliente') {
-        document.getElementById('sugerencias-clientes').style.display = 'none';
-    }
-});
+const inputCliente = document.getElementById("v_cliente");
+if (inputCliente) {
+    inputCliente.addEventListener("input", function (e) {
+        const busqueda = e.target.value.toLowerCase().trim();
+        const contenedor = document.getElementById("sugerencias-clientes");
 
+        if (!contenedor) return;
 
-async function irAReporteVentas() {
-    navegar('pantalla-reporte-ventas');
-    const contenedor = document.getElementById('lista-facturas-reporte');
-    contenedor.innerHTML = "<p style='text-align:center;'>⌛ Cargando datos desde Excel...</p>";
-    
-    try {
-        const datos = await leerExcel(); 
-        if (!datos || !datos.TFacturas) {
-            contenedor.innerHTML = "<p style='color:red;'>❌ No se pudieron obtener los datos de facturas.</p>";
+        if (busqueda.length < 1) {
+            contenedor.style.display = "none";
             return;
         }
 
-        // Guardamos los datos omitiendo el encabezado
-        window.datosVentasGlobal = datos.TFacturas.slice(1);
-        
-        // Configuramos las fechas por defecto solo si el campo está vacío
-        const fechaInicioInput = document.getElementById('filtro-fecha-inicio');
-        const fechaFinInput = document.getElementById('filtro-fecha-fin');
-        
-        if (!fechaInicioInput.value || !fechaFinInput.value) {
-            const hoy = new Date();
-            const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
-            const ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().split('T')[0];
-            
-            fechaInicioInput.value = primerDia;
-            fechaFinInput.value = ultimoDia;
-        }
-
-        aplicarFiltrosReporteVentas();
-    } catch (error) {
-        console.error("Error al cargar reporte:", error);
-        contenedor.innerHTML = "<p style='color:red;'>❌ Error: " + error.message + "</p>";
-    }
-}
-
-
-function aplicarFiltrosReporteVentas() {
-    const inicio = document.getElementById('filtro-fecha-inicio').value;
-    const fin = document.getElementById('filtro-fecha-fin').value;
-    const estadoSel = document.getElementById('filtro-estado').value;
-
-    if (!window.datosVentasGlobal) {
-        return alert("Los datos aún se están cargando desde Excel. Reintenta en un momento.");
-    }
-
-    const filtradas = window.datosVentasGlobal.filter(f => {
-        const fechaF = obtenerFechaComparar(f[1]); // Convierte serial a YYYY-MM-DD
-        const estadoExcel = f[6] ? f[6].toString().trim() : "Activa";
-        
-        const cumpleFecha = (fechaF >= inicio && fechaF <= fin);
-        // Comparamos el valor del select con el estado real del Excel (Activa, Cancelada, Anulada)
-        const cumpleEstado = (estadoSel === "TODAS" || estadoExcel === estadoSel);
-        
-        return cumpleFecha && cumpleEstado;
-    });
-
-    if (filtradas.length === 0) {
-        document.getElementById('lista-facturas-reporte').innerHTML = 
-            '<p style="text-align:center; padding:20px; color:#666;">No se encontraron facturas en este rango/estado.</p>';
-        return;
-    }
-
-    renderizarReporteVentas(filtradas);
-}
-
-
-function renderizarReporteVentas(filas) {
-    const contenedor = document.getElementById('lista-facturas-reporte');
-    if (!contenedor) return;
-
-    // CÁLCULO TOTAL: Suma directa de la columna 'Total' (f[5]) de todo lo que pasó el filtro
-    const totalGeneral = filas.reduce((acc, f) => acc + (parseFloat(f[5]) || 0), 0);
-
-    contenedor.innerHTML = `
-        <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: right; border-left: 5px solid #ef6c00; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-            <span style="color: #6d4c41; font-size: 0.9em; font-weight: bold;">TOTAL SELECCIONADO (Suma de columna Total):</span><br>
-            <strong style="font-size: 1.6em; color: #d84315;">C$ ${totalGeneral.toLocaleString('en-US', {minimumFractionDigits: 2})}</strong>
-            <p style="margin: 5px 0 0 0; font-size: 0.75em; color: #8d6e63;">* Representa la suma exacta de las ${filas.length} facturas mostradas abajo.</p>
-        </div>
-
-        <div style="overflow-x: auto;">
-            <table class="tabla-consultas" style="width:100%; font-size: 0.85em; border-collapse: collapse;">
-                <thead>
-                    <tr style="background: #8d6e63; color: white;">
-                        <th style="padding: 10px;">Factura N°</th>
-                        <th>Fecha</th>
-                        <th>Cliente</th>
-                        <th>Subtotal</th>
-                        <th>Envío</th>
-                        <th>Desc.</th>
-                        <th>Total</th>
-                        <th>Estado</th>
-                        <th>Acción</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${filas.map(f => {
-                        // 1. Formateo de fecha usando tu función existente
-                        const fechaObj = excelSerialToDate(f[1]);
-                        const fechaFmt = `${String(fechaObj.getDate()).padStart(2,'0')}/${String(fechaObj.getMonth()+1).padStart(2,'0')}/${fechaObj.getFullYear()}`;
-
-                        // 2. Valores numéricos
-                        const envio = parseFloat(f[3] || 0);
-                        const desc = parseFloat(f[4] || 0);
-                        const totalf = parseFloat(f[5] || 0);
-                        const pagado = parseFloat(f[7] || 0);
-                        
-                        // Calculamos el subtotal base para que la fila cuadre visualmente: (Total - Envío + Descuento)
-                        const subtotalCalculado = totalf - envio + desc;
-
-                        // 3. Lógica de estados (Mantenemos tu lógica de Cancelada vs Activa)
-                        let estadoReal = f[6] || "Activa";
-                        if (estadoReal !== 'Anulada') {
-                            estadoReal = (pagado >= totalf && totalf > 0) ? 'Cancelada' : 'Activa';
-                        }
-
-                        // 4. Colores de estado
-                        let colorEstado = "#f57c00"; // Naranja (Activa)
-                        if (estadoReal === 'Cancelada') colorEstado = "#2e7d32"; // Verde
-                        if (estadoReal === 'Anulada') colorEstado = "#d32f2f"; // Rojo
-
-                        return `
-                        <tr style="border-bottom: 1px solid #eee; ${estadoReal === 'Anulada' ? 'text-decoration: line-through; color: #bbb; background: #fafafa;' : ''}">
-                            <td style="padding: 10px; font-weight: bold;">${f[0]}</td>
-                            <td>${fechaFmt}</td>
-                            <td style="text-align: left;">${f[2]}</td>
-                            <td>${subtotalCalculado.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-                            <td>${envio.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-                            <td>${desc.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-                            <td style="font-weight: bold; color: #333;">C$ ${totalf.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-                            <td>
-                                <span style="color: ${colorEstado}; font-weight: bold;">${estadoReal.toUpperCase()}</span>
-                            </td>
-                            <td>
-                                <button onclick="previsualizarFactura('${f[0]}')" style="padding: 4px 8px; cursor: pointer; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px;">👁️</button>
-                            </td>
-                        </tr>`;
-                    }).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
-}
-
-
-function mostrarReporteGanancias() {
-    navegar('pantalla-reporte-ganancias'); // Crea esta sección similar a la de ventas
-    
-    // Sumamos la ganancia neta de la tabla TGanancia
-    const totalGanancia = datosGanancia.reduce((acc, fila) => {
-        // Solo sumamos si la factura está 'Activa' o 'Cancelada'
-        if (fila.Estado !== 'Anulada') {
-            return acc + (parseFloat(fila.Ganancia_Venta) || 0);
-        }
-        return acc;
-    }, 0);
-
-    document.getElementById('total-ganancia-display').innerText = `C$ ${totalGanancia.toLocaleString()}`;
-}
-
-
-// ==========================================
-// 4. LÓGICA DE DATOS (READ/WRITE/DELETE)
-// ==========================================
-
-/**
- * Lee los datos de las tablas principales de Excel.
- */
-async function leerExcel() {
-    const tablas = ["TFacturas", "TDetalle", "TAnticipos", "TClientes"]; 
-    const token = await getAuthToken();
-    const resultados = {}; // Aquí guardaremos los datos de las tablas
-
-    for (const nombre of tablas) {
-        try {
-            const url = `${graphBaseUrl}/workbook/tables/${nombre}/range?t=${Date.now()}`;
-            const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-
-            if (!resp.ok) {
-                console.error(`[leerExcel] Error en tabla ${nombre}`);
-                continue;
-            }
-
-            const data = await resp.json();
-
-            // Solo guardamos los valores, no dibujamos nada aquí
-            resultados[nombre] = data.values || [];
-            console.log(`[leerExcel] Datos de ${nombre} obtenidos con éxito.`);
-        } catch (err) {
-            console.error(`[leerExcel] Fallo de conexión en ${nombre}:`, err);
-        }
-    }
-    return resultados; // Devolvemos el objeto con toda la información
-}
-
-/**
- * Escribe nuevas filas en cualquier tabla de Excel.
- */
-async function escribirFilas(nombreTabla, filas) {
-    const token = await getAuthToken();
-    const url = `${graphBaseUrl}/workbook/tables/${nombreTabla}/rows`;
-    const resp = await fetch(url, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ values: filas })
-    });
-    return resp.ok;
-}
-
-/**
- * Agrega visualmente una fila de anticipo en el formulario de ventas.
- */
-function agregarFilaAnticipo(datos = null) {
-    const contenedor = document.getElementById('contenedor-anticipos');
-    const div = document.createElement('div');
-    div.className = 'fila-anticipo'; // Clase importante para el onsubmit
-    
-    const hoy = new Date().toISOString().split('T')[0];
-
-    // Si pasamos datos (para edición), los usamos. Si no, vacíos.
-    const fecha = datos ? datos.fecha : hoy;
-    const monto = datos ? datos.monto : "";
-    const nota = datos ? datos.nota : "";
-
-    div.innerHTML = `
-        <div style="display:grid; grid-template-columns: 1.2fr 1fr 2fr 30px; gap:8px; align-items: center; margin-bottom:10px; background: #fff; padding: 10px; border: 1px solid #eee; border-radius:5px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <input type="date" class="a_fecha" value="${datos ? (isNaN(datos.fecha) ? datos.fecha : excelSerialToDate(datos.fecha)) : hoy}" required style="width:100%;">
-            <input type="number" class="a_monto" placeholder="Monto" value="${datos ? datos.monto : ""}" required style="width:100%;">
-            <input type="text" class="a_comentario" placeholder="Efectivo, Transferencia, etc." value="${datos ? datos.nota : ""}" style="width:100%;">
-            
-            <button type="button" onclick="this.closest('.fila-anticipo').remove()" 
-                style="color:#c62828; background:#ffeeee; border:1px solid #ffcdd2; border-radius:50%; width:25px; height:25px; cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
-        </div>
-    `;
-    contenedor.appendChild(div);
-}
-
-/**
- * Elimina los registros de una factura en TFacturas, TDetalle y TAnticipos antes de sobreescribir (Editar).
- */
-async function eliminarRegistrosPrevios(facturaID) {
-    const token = await getAuthToken();
-    const tablas = ["TFacturas", "TDetalle", "TAnticipos"];
-
-    for (const nombreTabla of tablas) {
-        // 1. Obtener el rango de la tabla
-        const res = await fetch(`${graphBaseUrl}/workbook/tables/${nombreTabla}/range`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-
-        if (!data.values || data.values.length <= 1) continue;
-
-        // 2. Identificar qué filas coinciden con la facturaID
-        // Factura_ID: Índice 0 en TFacturas/TDetalle, Índice 1 en TAnticipos
-        const indiceColumnaId = (nombreTabla === "TAnticipos") ? 1 : 0;
-
-        // Filtramos al revés para no alterar el orden al borrar
-        const filasAEliminar = data.values
-            .map((fila, index) => ({ id: fila[indiceColumnaId], index: index - 1 })) // -1 por encabezado
-            .filter(item => item.id && item.id.toString() === facturaID.toString())
-            .reverse();
-
-        // 3. Borrar cada fila encontrada
-        for (const fila of filasAEliminar) {
-            await fetch(`${graphBaseUrl}/workbook/tables/${nombreTabla}/rows/itemAt(index=${fila.index})`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-        }
-    }
-}
-
-/**
- * Verifica si el cliente existe en TClientes; si no, lo registra automáticamente.
- */
-async function asegurarRegistroCliente(nombreCliente) {
-    if (!nombreCliente) return;
-
-    const token = await getAuthToken();
-    try {
-        // 1. Consultar la tabla TClientes
-        const res = await fetch(`${graphBaseUrl}/workbook/tables/TClientes/range`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-
-        // 2. Verificar si el nombre ya existe (Columna B es índice 1)
-        const existe = data.values && data.values.some(fila => 
-            fila[1] && fila[1].toString().toLowerCase() === nombreCliente.toLowerCase()
+        const matches = appState.clientes.filter((cliente) =>
+            cliente.nombre &&
+            cliente.nombre.toString().toLowerCase().includes(busqueda)
         );
 
-        if (!existe) {
-            console.log(`Cliente nuevo detectado: ${nombreCliente}. Registrando...`);
-            const nuevoId = `C-${Date.now().toString().slice(-6)}`;
-            
-            // Estructura: Cliente_ID, Nombre, Teléfono, Dirección1, Dirección2, Dirección3, Nota
-            const nuevaFila = [nuevoId, nombreCliente, "", "", "", "", "Registrado desde factura"];
-
-            await escribirFilas("TClientes", [nuevaFila]);
-            
-            // Actualizamos la memoria para que aparezca en el buscador sin recargar
-            await actualizarMemoriaClientes();
+        if (matches.length === 0) {
+            contenedor.style.display = "none";
+            return;
         }
-    } catch (error) {
-        console.error("Error al validar/registrar cliente:", error);
-    }
+
+        contenedor.innerHTML = matches.map((cliente) => `
+            <div class="sugerencia-item" onclick="seleccionarClienteSug('${cliente.nombre}')">
+                ${cliente.nombre}
+            </div>
+        `).join("");
+
+        contenedor.style.display = "block";
+    });
 }
 
+document.addEventListener("click", (e) => {
+    const contenedor = document.getElementById("sugerencias-clientes");
+    if (!contenedor) return;
+
+    if (e.target.id !== "v_cliente") {
+        contenedor.style.display = "none";
+    }
+});
+
 
 // ==========================================
-// 5. PROCESO DE VENTA (VALIDADO)
+// 11. PROCESO DE VENTA
 // ==========================================
+const formVentas = document.getElementById("formVentas");
 
-document.getElementById('formVentas').onsubmit = async (e) => {
-    e.preventDefault();
-    const btn = e.submitter;
-    const form = e.target;
-    btn.disabled = true;
-    
-    const esEdicion = form.dataset.modo === "edit";
-    let facturaID = form.dataset.idFactura;
-    const clienteNombre = document.getElementById('v_cliente').value; 
-    
-    document.getElementById('mensaje').innerText = esEdicion ? "Actualizando factura..." : "Guardando venta...";
+if (formVentas) {
+    formVentas.onsubmit = async (e) => {
+        e.preventDefault();
 
-    try {
-        const token = await getAuthToken();
+        const btn = e.submitter;
+        const form = e.target;
 
-        // --- PASO 0. GESTIÓN DE CLIENTE ---
-        await asegurarRegistroCliente(clienteNombre);
-        const clienteEncontrado = listaClientesGlobal.find(c => c.nombre === clienteNombre);
-        const clienteIDFinal = clienteEncontrado ? clienteEncontrado.id : "C-NUEVO";
+        if (btn) btn.disabled = true;
 
-        if (esEdicion) {
-            await eliminarRegistrosPrevios(facturaID);
-        } else {
-            const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { 
-                headers: { 'Authorization': `Bearer ${token}` } 
+        const esEdicion = form.dataset.modo === "edit";
+        let facturaID = form.dataset.idFactura;
+        const clienteNombre = document.getElementById("v_cliente")?.value?.trim() || "";
+
+        setMensaje(esEdicion ? "Actualizando factura..." : "Guardando venta...");
+
+        try {
+            const token = await getAuthToken();
+
+            await asegurarRegistroCliente(clienteNombre);
+
+            const clienteEncontrado = appState.clientes.find((cliente) =>
+                cliente.nombre &&
+                cliente.nombre.toString().trim().toLowerCase() === clienteNombre.toLowerCase()
+            );
+
+            const clienteIDFinal = clienteEncontrado ? clienteEncontrado.id : "C-NUEVO";
+
+            if (esEdicion) {
+                await eliminarRegistrosPrevios(facturaID);
+            } else {
+                const facturas = await leerTabla(CONFIG.tablas.facturas);
+
+                let proxId = 1;
+
+                if (facturas.length > 1) {
+                    const ids = facturas
+                        .slice(1)
+                        .map((fila) => parseInt(fila[0]?.toString().substring(4)) || 0);
+
+                    proxId = Math.max(...ids) + 1;
+                }
+
+                facturaID = `${new Date().getFullYear()}${proxId.toString().padStart(4, "0")}`;
+            }
+
+            const filasProductoDOM = document.querySelectorAll(".fila-producto");
+            if (!filasProductoDOM.length) {
+                throw new Error("Debes agregar al menos un producto.");
+            }
+
+            const filasDetalle = [];
+            let sumaSubtotales = 0;
+
+            for (const fila of filasProductoDOM) {
+                const nombre = fila.querySelector(".p_nombre")?.value?.trim() || "";
+                const cant = parseInt(fila.querySelector(".p_cantidad")?.value) || 0;
+                const precio = parseFloat(fila.querySelector(".p_precio")?.value) || 0;
+                const desc = parseFloat(fila.querySelector(".p_descuento")?.value) || 0;
+
+                if (!nombre || cant <= 0 || precio <= 0) {
+                    throw new Error("Hay productos incompletos o inválidos.");
+                }
+
+                const subtotal = (cant * precio) - desc;
+
+                let fileIdImg = fila.dataset.fileid || "sin_foto";
+                const archivo = fila.querySelector(".p_imagen")?.files?.[0];
+
+                if (archivo) {
+                    const nombreImg = `${facturaID}_${nombre.replace(/\s+/g, "_")}.jpg`;
+                    const uploadUrl =
+                        `https://graph.microsoft.com/v1.0/drives/${CONFIG.graph.driveId}/items/${CONFIG.graph.productosFolderId}:/${nombreImg}:/content`;
+
+                    const respUpload = await fetch(uploadUrl, {
+                        method: "PUT",
+                        headers: {
+                            Authorization: `Bearer ${token}`
+                        },
+                        body: archivo
+                    });
+
+                    if (!respUpload.ok) {
+                        throw new Error(`No se pudo subir la imagen de ${nombre}.`);
+                    }
+
+                    const dataUpload = await respUpload.json();
+                    fileIdImg = dataUpload.id || "sin_foto";
+                }
+
+                filasDetalle.push([
+                    facturaID,
+                    nombre,
+                    cant,
+                    precio,
+                    desc,
+                    subtotal,
+                    fileIdImg
+                ]);
+
+                sumaSubtotales += subtotal;
+            }
+
+            const filasAnticipos = [];
+            let totalPagado = 0;
+
+            const filasAnticipoDOM = document.querySelectorAll(".fila-anticipo");
+
+            filasAnticipoDOM.forEach((fila, index) => {
+                const fechaA = fila.querySelector(".a_fecha")?.value || "";
+                const montoA = parseFloat(fila.querySelector(".a_monto")?.value) || 0;
+                const notaA = fila.querySelector(".a_comentario")?.value || "";
+                const anticipoID = `ANT-${facturaID}-${index + 1}`;
+
+                if (fechaA && montoA > 0) {
+                    filasAnticipos.push([
+                        anticipoID,
+                        facturaID,
+                        clienteIDFinal,
+                        fechaA,
+                        montoA,
+                        notaA
+                    ]);
+
+                    totalPagado += montoA;
+                }
             });
-            const dataC = await resC.json();
-            let proxId = 1;
-            if (dataC.values && dataC.values.length > 1) {
-                const ids = dataC.values.slice(1).map(f => parseInt(f[0].toString().substring(4)) || 0);
-                proxId = Math.max(...ids) + 1;
-            }
-            facturaID = `${new Date().getFullYear()}${proxId.toString().padStart(4, '0')}`;
-        }
 
-        // --- 1. PROCESAR PRODUCTOS (TDetalle) ---
-        const filasDetalle = [];
-        let sumaSubtotales = 0;
+            const envio = parseFloat(document.getElementById("v_envio")?.value) || 0;
+            const descG = parseFloat(document.getElementById("v_desc_global")?.value) || 0;
+            const totalF = sumaSubtotales + envio - descG;
 
-        for (let fila of document.querySelectorAll('.fila-producto')) {
-            const nombre = fila.querySelector('.p_nombre').value;
-            const cant = parseInt(fila.querySelector('.p_cantidad').value);
-            const precio = parseFloat(fila.querySelector('.p_precio').value);
-            const desc = parseFloat(fila.querySelector('.p_descuento').value) || 0;
-            const subtotal = (cant * precio) - desc;
+            const estadoFinal =
+                totalPagado >= totalF && totalF > 0 ? "Cancelada" : "Activa";
 
-            let fileIdImg = fila.dataset.fileid || "sin_foto";
-            const archivo = fila.querySelector('.p_imagen')?.files[0];
+            await escribirFilas(CONFIG.tablas.detalle, filasDetalle);
 
-            if (archivo) {
-                const nombreImg = `${facturaID}_${nombre.replace(/\s+/g, '_')}.jpg`;
-                const uploadUrl = `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${productosFolderId}:/${nombreImg}:/content`;
-                const respUpload = await fetch(uploadUrl, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    body: archivo
-                });
-                const dataUpload = await respUpload.json();
-                fileIdImg = dataUpload.id;
+            if (filasAnticipos.length > 0) {
+                await escribirFilas(CONFIG.tablas.anticipos, filasAnticipos);
             }
 
-            filasDetalle.push([facturaID, nombre, cant, precio, desc, subtotal, fileIdImg]);
-            sumaSubtotales += subtotal;
+            await escribirFilas(CONFIG.tablas.facturas, [[
+                facturaID,
+                document.getElementById("v_fecha")?.value || "",
+                clienteNombre,
+                envio,
+                descG,
+                totalF,
+                estadoFinal,
+                totalPagado
+            ]]);
+
+            limpiarYRegresar();
+            setMensaje("Procesando...");
+
+            setTimeout(async () => {
+                if (typeof ImprimirFactura === "function") {
+                    await ImprimirFactura(facturaID);
+                }
+
+                await leerExcel();
+                setMensaje("Listo.");
+            }, 1200);
+
+        } catch (error) {
+            console.error(error);
+            alert("Error al guardar: " + error.message);
+            setMensaje("Error en el registro.");
+        } finally {
+            if (btn) btn.disabled = false;
         }
-
-        // --- 2. PROCESAR ANTICIPOS (TAnticipos) ---
-        const filasAnticipos = [];
-        let totalPagado = 0;
-        const domAnticipos = document.querySelectorAll('.fila-anticipo');
-
-        domAnticipos.forEach((fila, index) => {
-            const fechaA = fila.querySelector('.a_fecha').value;
-            const montoA = parseFloat(fila.querySelector('.a_monto').value) || 0;
-            const notaA = fila.querySelector('.a_comentario').value;
-            const anticipoID = `ANT-${facturaID}-${index + 1}`;
-            
-            filasAnticipos.push([anticipoID, facturaID, clienteIDFinal, fechaA, montoA, notaA]);
-            totalPagado += montoA;
-        });
-
-        // --- 3. CÁLCULOS FINALES ---
-        const envio = parseFloat(document.getElementById('v_envio').value) || 0;
-        const descG = parseFloat(document.getElementById('v_desc_global').value) || 0;
-        const totalF = sumaSubtotales + envio - descG;
-
-        // --- LÓGICA DE ESTADO INTELIGENTE ---
-        // Si el total pagado cubre la factura, se guarda como "Cancelada", si no "Activa"
-        let estadoFinal = (totalPagado >= totalF && totalF > 0) ? "Cancelada" : "Activa";
-
-        // --- 4. GUARDAR EN EXCEL ---
-        await escribirFilas("TDetalle", filasDetalle);
-        
-        if (filasAnticipos.length > 0) {
-            await escribirFilas("TAnticipos", filasAnticipos);
-        }
-
-        // Guardamos en TFacturas con el estado dinámico
-        await escribirFilas("TFacturas", [
-            [facturaID, document.getElementById('v_fecha').value, clienteNombre, envio, descG, totalF, estadoFinal, totalPagado]
-        ]);
-
-        // --- 5. LIMPIEZA Y FINALIZACIÓN ---
-        limpiarYRegresar(); 
-        
-        document.getElementById('mensaje').innerText = "Procesando...";
-        
-        setTimeout(async () => {
-            if (typeof ImprimirFactura === "function") {
-                await ImprimirFactura(facturaID); 
-            }
-            await leerExcel();
-            document.getElementById('mensaje').innerText = "Listo.";
-        }, 1200);
-
-    } catch (err) {
-        console.error(err);
-        alert("Error al guardar: " + err.message);
-        document.getElementById('mensaje').innerText = "Error en el registro.";
-    } finally {
-        btn.disabled = false;
-    }
-};
-
-
-// ==========================================
-// 6. RENDERIZADO Y CONSULTAS
-// ==========================================
-
-async function refrescarTablasManual() {
-    
-    // Esta función SOLO se encarga de traer datos y dibujar.
-        document.getElementById('mensaje').innerText = "Actualizando datos...";
-
-    // 2. Traemos los datos
-    const datosRecienLlegados = await leerExcel(); 
-    
-    // 3. Dibujamos
-    if (datosRecienLlegados.TFacturas) {
-        mostrarEnPantalla('TFacturas', datosRecienLlegados.TFacturas);
-    }
-    if (datosRecienLlegados.TDetalle) {
-        mostrarEnPantalla('TDetalle', datosRecienLlegados.TDetalle);
-    }
-    if (datosRecienLlegados.TClientes) {
-        mostrarEnPantalla('TClientes', datosRecienLlegados.TDetalle);
-    }
-    if (datosRecienLlegados.TCostos) {
-        mostrarEnPantalla('TCostos', datosRecienLlegados.TDetalle);
-    }
-    if (datosRecienLlegados.TGanancia) {
-        mostrarEnPantalla('TGanancia', datosRecienLlegados.TDetalle);
-    }
-
-    document.getElementById('mensaje').innerText = "Tablas actualizadas.";
+    };
 }
 
+// ==========================================
+// 12. CONSULTAS Y TABLAS
+// ==========================================
+async function refrescarTablasManual() {
+    setMensaje("Actualizando datos...");
+
+    const datos = await leerExcel();
+
+    if (datos[CONFIG.tablas.facturas]) {
+        mostrarEnPantalla(
+            CONFIG.tablas.facturas,
+            datos[CONFIG.tablas.facturas]
+        );
+    }
+
+    if (datos[CONFIG.tablas.detalle]) {
+        mostrarEnPantalla(
+            CONFIG.tablas.detalle,
+            datos[CONFIG.tablas.detalle]
+        );
+    }
+
+    setMensaje("Tablas actualizadas.");
+}
 
 function mostrarEnPantalla(nombre, valores) {
-    const ids = { 'TFacturas': 'tabla-facturas', 'TDetalle': 'tabla-detalle' };
+    const ids = {
+        [CONFIG.tablas.facturas]: "tabla-facturas",
+        [CONFIG.tablas.detalle]: "tabla-detalle"
+    };
+
     const contenedorId = ids[nombre];
     const contenedor = document.getElementById(contenedorId);
 
@@ -690,44 +683,59 @@ function mostrarEnPantalla(nombre, valores) {
         return;
     }
 
-    let html = `<h4>${nombre}</h4>
-                <div style="overflow-x:auto;">
-                <table border="1" style="width:100%; border-collapse:collapse; background:white; font-size:12px;">`;
+    let html = `
+        <h4>${nombre}</h4>
+        <div style="overflow-x:auto;">
+            <table border="1" style="width:100%; border-collapse:collapse; background:white; font-size:12px;">
+    `;
 
     valores.forEach((fila, i) => {
         const estilo = i === 0 ? "background:#8d6e63; color:white;" : "";
         html += `<tr style="${estilo}">`;
-        fila.forEach(celda => {
-            html += `<td style="padding:8px; border:1px solid #ddd;">${celda ?? ''}</td>`;
+
+        fila.forEach((celda) => {
+            html += `<td style="padding:8px; border:1px solid #ddd;">${celda ?? ""}</td>`;
         });
-        
-        if (nombre === 'TFacturas') {
-            if (i === 0) html += `<td>Acción</td>`;
-            else if (fila[0]) html += `<td><button onclick="ImprimirFactura('${fila[0]}')">🖨️</button></td>`;
+
+        if (nombre === CONFIG.tablas.facturas) {
+            if (i === 0) {
+                html += `<td>Acción</td>`;
+            } else if (fila[0]) {
+                html += `<td><button onclick="ImprimirFactura('${fila[0]}')">🖨️</button></td>`;
+            }
         }
-        html += '</tr>';
+
+        html += `</tr>`;
     });
 
-    html += '</table></div>';
+    html += `</table></div>`;
     contenedor.innerHTML = html;
 }
 
 
+// ==========================================
+// 13. FACTURA CROCHET
+// ==========================================
 function generarFacturaOligarCrochet(d) {
-    const n = (num) => parseFloat(num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const n = (num) =>
+        parseFloat(num || 0).toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
 
-    // 1. Cálculo del Subtotal de productos (suma antes de envío y descuento global)
-    const sumaSubtotalesProductos = d.detalles.reduce((acc, it) => acc + parseFloat(it.Subtotal), 0);
-    
-    // Cálculo de saldo para lógica de visibilidad (Total - Anticipo)
+    const sumaSubtotalesProductos = d.detalles.reduce(
+        (acc, it) => acc + parseFloat(it.Subtotal || 0),
+        0
+    );
+
     const totalFactura = parseFloat(d.Total_Factura) || 0;
     const anticipo = parseFloat(d.Anticipo) || 0;
     const saldoPendiente = totalFactura - anticipo;
 
-    // 2. Construcción de las filas de productos
-    const filas = d.detalles.map(it => {
-        // Cálculo del precio unitario base (Subtotal + Descuento) / Cantidad
-        const precioUnitarioBase = (parseFloat(it.Subtotal) + parseFloat(it.Desc_Prod)) / it.Cantidad;
+    const filas = d.detalles.map((it) => {
+        const precioUnitarioBase =
+            (parseFloat(it.Subtotal || 0) + parseFloat(it.Desc_Prod || 0)) /
+            (parseFloat(it.Cantidad || 1) || 1);
 
         return `
             <tr>
@@ -736,40 +744,38 @@ function generarFacturaOligarCrochet(d) {
                     <br>
                     ${(it.Cantidad > 1 || it.Desc_Prod > 0) ? `
                         <small style="color:#333;">Precio unitario: ${n(precioUnitarioBase)}</small>
-                    ` : ''}
+                    ` : ""}
                     ${it.Desc_Prod > 0 ? `
                         <small style="color:red; margin-left: 8px;">Desc: -${n(it.Desc_Prod)}</small>
-                    ` : ''}
+                    ` : ""}
                 </td>
                 <td style="padding:10px; text-align:right; border-bottom:1px solid #eee;">
                     ${n(it.Subtotal)}
                 </td>
             </tr>
         `;
-    }).join('');
+    }).join("");
 
-    // 3. Bloque de imágenes (grid de 3 columnas)
     const imagenesHTML = d.detalles
-        .filter(it => it.Imagen_Producto && it.Imagen_Producto !== "sin_foto")
-        .map(it => `
+        .filter((it) => it.Imagen_Producto && it.Imagen_Producto !== "sin_foto")
+        .map((it) => `
             <div style="text-align:center;">
-                <img src="${it.Imagen_Producto}" 
+                <img src="${it.Imagen_Producto}"
                      onerror="this.src='https://via.placeholder.com/150?text=Sin+Foto'"
                      style="width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:5px; border:1px solid #eee;">
                 <p style="font-size:9px; color:#666; margin-top:4px;">${it.Producto}</p>
             </div>
-        `).join('');
+        `)
+        .join("");
 
-    // 4. Composición final del HTML
     const contenido = `
         <div style="color:#444; font-size: 14px; font-family: sans-serif;">
-            
             <div style="display: flex; align-items: center; margin-bottom: 20px;">
                 <div style="flex: 0 0 130px; text-align: center;">
                     <img src="logo_oligar.png" style="width: 140px; height: auto; display: block; margin: 0 auto;">
                 </div>
-                
-                <div style="flex: 1; text-align: center; padding-right: 130px;"> 
+
+                <div style="flex: 1; text-align: center; padding-right: 130px;">
                     <h1 style="margin: 0; color: #5d4037; letter-spacing: 2px; font-size: 24px;">OLIGAR CROCHET</h1>
                     <i style="color: #8d6e63; font-size: 16px;">"Creando con amor"</i>
                     <p style="margin: 5px 0 0; font-size: 15px; color: #7d57e2;">
@@ -781,8 +787,9 @@ function generarFacturaOligarCrochet(d) {
 
             <hr style="border: none; border-top: 2px solid #5D4037; margin-bottom: 15px;">
 
-            <p><strong>Factura N°:</strong> ${d.Factura_ID} <span style="float:right;"><strong>Fecha:</strong> ${formatFechaDDMMYYYY(excelSerialToDate(d.Fecha))}</span></p>
-            
+            <p><strong>Factura N°:</strong> ${d.Factura_ID}
+               <span style="float:right;"><strong>Fecha:</strong> ${formatFechaDDMMYYYY(excelSerialToDate(d.Fecha))}</span></p>
+
             <p style="margin: 20px 0;">
                 <span style="border-left: 3px solid #8d6e63; padding-left: 10px;">
                     <strong>Cliente:</strong> ${d.Cliente}
@@ -815,7 +822,7 @@ function generarFacturaOligarCrochet(d) {
                     <td style="padding:2px 10px; text-align:right; color:red;">Desc. Global:</td>
                     <td style="padding:2px 10px; text-align:right; color:red;">-C$ ${n(d.Desc_Global)}</td>
                 </tr>
-                ` : ''}
+                ` : ""}
                 <tr>
                     <td style="padding:10px; text-align:right; font-weight:bold; font-size:1.2em;">TOTAL:</td>
                     <td style="padding:10px; text-align:right; font-weight:bold; font-size:1.2em; color:#5d4037;">
@@ -838,154 +845,165 @@ function generarFacturaOligarCrochet(d) {
                 <div style="margin-top:20px; display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; border-top:1px solid #eee; padding-top:20px;">
                     ${imagenesHTML}
                 </div>
-            ` : ''}
+            ` : ""}
         </div>
     `;
 
-    document.getElementById('detalle-factura').innerHTML = contenido;
-    document.getElementById('modal-factura').style.display = 'block';
+    document.getElementById("detalle-factura").innerHTML = contenido;
+    document.getElementById("modal-factura").style.display = "block";
 }
 
 
+// ==========================================
+// 14. PREVISUALIZAR / IMPRIMIR FACTURA
+// ==========================================
 async function previsualizarFactura(idParam) {
-    // Si pasamos el ID por parámetro lo usamos, si no, lo buscamos en el input
-    const id = idParam || document.getElementById('busqueda_factura').value;
+    const id = idParam || document.getElementById("busqueda_factura")?.value;
     if (!id) return alert("Ingresa un ID");
 
     try {
-        const token = await getAuthToken();
-        const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
-        });
-        const dC = await resC.json();
-        const fC = dC.values.find(f => f[0] && f[0].toString() === id.toString());
+        const facturas = await leerTabla(CONFIG.tablas.facturas);
+        const fC = facturas.find(
+            (fila) => fila[0] && fila[0].toString() === id.toString()
+        );
 
         if (!fC) return alert("Factura no encontrada");
 
-        // 1. Mostrar el panel
-        document.getElementById('panel-previsualizacion').style.display = 'block';
+        const panel = document.getElementById("panel-previsualizacion");
+        if (panel) panel.style.display = "block";
 
-        // 2. Llenar campos y calcular saldos
-        document.getElementById('pre_cliente').value = fC[2];
-        // Nota: excelSerialToDate ya devuelve un objeto Date según tus funciones previas
-        document.getElementById('pre_fecha').value = excelSerialToDate(fC[1]).toLocaleDateString();
-        
+        const preCliente = document.getElementById("pre_cliente");
+        const preFecha = document.getElementById("pre_fecha");
+        const preTotal = document.getElementById("pre_total");
+        const preSaldo = document.getElementById("pre_saldo");
+        const preEnvio = document.getElementById("pre_envio");
+        const prePagado = document.getElementById("pre_pagado");
+
+        if (preCliente) preCliente.value = fC[2];
+        if (preFecha) preFecha.value = excelSerialToDate(fC[1]).toLocaleDateString();
+
         const totalFactura = parseFloat(fC[5]) || 0;
-        const totalPagado  = parseFloat(fC[7]) || 0;
-        const saldo        = totalFactura - totalPagado;
+        const totalPagado = parseFloat(fC[7]) || 0;
+        const saldo = totalFactura - totalPagado;
 
-        document.getElementById('pre_total').value = "C$ " + totalFactura.toLocaleString('en-US', {minimumFractionDigits:2});
-        document.getElementById('pre_envio').value = "C$ " + (parseFloat(fC[3]) || 0).toLocaleString('en-US', {minimumFractionDigits:2});
-        
-        if(document.getElementById('pre_pagado')) {
-            document.getElementById('pre_pagado').value = "C$ " + totalPagado.toLocaleString('en-US', {minimumFractionDigits:2});
-        }
-        if(document.getElementById('pre_saldo')) {
-            const elSaldo = document.getElementById('pre_saldo');
-            elSaldo.value = "C$ " + saldo.toLocaleString('en-US', {minimumFractionDigits:2});
-            // Estilo visual para el saldo: rojo si hay deuda
-            elSaldo.style.color = saldo > 0 ? "#c62828" : "#2e7d32";
-            elSaldo.style.fontWeight = "bold";
+        if (preTotal) {
+            preTotal.value = "C$ " + totalFactura.toLocaleString("en-US", {
+                minimumFractionDigits: 2
+            });
         }
 
-        // 3. Gestión de Estatus Dinámico (Colores para Activa, Cancelada, Anulada)
-        const estado = fC[6] || "Activa"; 
-        const badge = document.getElementById('status-badge');
-        const txtStatus = document.getElementById('txt-status');
-        
-        txtStatus.innerText = estado.toUpperCase();
-        
-        const btnEditar = document.getElementById('btn-pre-editar');
-        const btnAnular = document.getElementById('btn-pre-anular');
-        const btnActivar = document.getElementById('btn-pre-activar');
+        if (preEnvio) {
+            preEnvio.value = "C$ " + (parseFloat(fC[3]) || 0).toLocaleString("en-US", {
+                minimumFractionDigits: 2
+            });
+        }
 
-        // Reset de botones y estilos
-        btnEditar.style.display = 'block';
-        btnAnular.style.display = 'block';
-        if(btnActivar) btnActivar.style.display = 'none';
+        if (prePagado) {
+            prePagado.value = "C$ " + totalPagado.toLocaleString("en-US", {
+                minimumFractionDigits: 2
+            });
+        }
+
+        if (preSaldo) {
+            preSaldo.value = "C$ " + saldo.toLocaleString("en-US", {
+                minimumFractionDigits: 2
+            });
+            preSaldo.style.color = saldo > 0 ? "#c62828" : "#2e7d32";
+            preSaldo.style.fontWeight = "bold";
+        }
+
+        const estado = fC[6] || "Activa";
+        const badge = document.getElementById("status-badge");
+        const txtStatus = document.getElementById("txt-status");
+        const btnEditar = document.getElementById("btn-pre-editar");
+        const btnAnular = document.getElementById("btn-pre-anular");
+        const btnActivar = document.getElementById("btn-pre-activar");
+        const btnImprimir = document.getElementById("btn-pre-imprimir");
+
+        if (txtStatus) txtStatus.innerText = estado.toUpperCase();
+
+        if (btnEditar) btnEditar.style.display = "block";
+        if (btnAnular) btnAnular.style.display = "block";
+        if (btnActivar) btnActivar.style.display = "none";
 
         if (estado === "Anulada") {
-            badge.style.background = "#ffebee"; // Rojo claro
-            badge.style.color = "#c62828";
-            btnEditar.style.display = 'none';
-            btnAnular.style.display = 'none';
-            if(btnActivar) btnActivar.style.display = 'block'; 
-        } 
-        else if (estado === "Cancelada") {
-            badge.style.background = "#e8f5e9"; // Verde
-            badge.style.color = "#2e7d32";
-        } 
-        else { // "Activa"
-            badge.style.background = "#fff3e0"; // Naranja claro
-            badge.style.color = "#ef6c00";
+            if (badge) {
+                badge.style.background = "#ffebee";
+                badge.style.color = "#c62828";
+            }
+            if (btnEditar) btnEditar.style.display = "none";
+            if (btnAnular) btnAnular.style.display = "none";
+            if (btnActivar) btnActivar.style.display = "block";
+        } else if (estado === "Cancelada") {
+            if (badge) {
+                badge.style.background = "#e8f5e9";
+                badge.style.color = "#2e7d32";
+            }
+        } else {
+            if (badge) {
+                badge.style.background = "#fff3e0";
+                badge.style.color = "#ef6c00";
+            }
         }
 
-        // 4. Configurar eventos
-        btnEditar.onclick = () => cargarFacturaParaEditar(id);
-        document.getElementById('btn-pre-imprimir').onclick = () => ImprimirFactura(id);
-        btnAnular.onclick = () => cambiarEstadoFactura(id, "Anulada");
-        
-        if(btnActivar) {
-            btnActivar.onclick = () => cambiarEstadoFactura(id, "Activa");
-        }
+        if (btnEditar) btnEditar.onclick = () => cargarFacturaParaEditar(id);
+        if (btnImprimir) btnImprimir.onclick = () => ImprimirFactura(id);
+        if (btnAnular) btnAnular.onclick = () => cambiarEstadoFactura(id, "Anulada");
+        if (btnActivar) btnActivar.onclick = () => cambiarEstadoFactura(id, "Activa");
 
-    } catch (e) {
-        console.error(e);
-        alert("Error al cargar vista previa: " + e.message);
+    } catch (error) {
+        console.error(error);
+        alert("Error al cargar vista previa: " + error.message);
     }
 }
-
 
 async function ImprimirFactura(idFactura) {
     try {
         const token = await getAuthToken();
 
-        // --- 1. Leer cabecera ---
-        const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
-        });
-        const dC = await resC.json();
-        const fC = dC.values.find(f => f[0] && f[0].toString() === idFactura.toString());
+        const facturas = await leerTabla(CONFIG.tablas.facturas);
+        const fC = facturas.find(
+            (fila) => fila[0] && fila[0].toString() === idFactura.toString()
+        );
 
-        // Validación preventiva
         if (!fC) {
             alert("Error: No se encontró la cabecera de la factura " + idFactura);
-            return; // Detenemos la ejecución para no intentar leer datos que no existen
+            return;
         }
 
-        // --- 2. Leer detalle ---
-        const resD = await fetch(`${graphBaseUrl}/workbook/tables/TDetalle/range`, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
-        });
-        const dD = await resD.json();
+        const detalle = await leerTabla(CONFIG.tablas.detalle);
 
         const detalles = [];
-        for (let f of dD.values) {
-            if (f[0] && f[0].toString() === idFactura.toString()) {
 
-                const fileIdImg = f[6];
+        for (const fila of detalle) {
+            if (fila[0] && fila[0].toString() === idFactura.toString()) {
+                const fileIdImg = fila[6];
                 let urlImagen = "";
 
                 if (fileIdImg && fileIdImg !== "sin_foto") {
                     try {
-                        // Pedimos a la API los detalles del archivo, que incluyen el link de descarga directa
-                        const resImg = await fetch(`https://graph.microsoft.com/v1.0/drives/${driveId}/items/${fileIdImg}`, {
-                            headers: { 'Authorization': `Bearer ${token}` }
-                        });
+                        const resImg = await fetch(
+                            `https://graph.microsoft.com/v1.0/drives/${CONFIG.graph.driveId}/items/${fileIdImg}`,
+                            {
+                                headers: {
+                                    Authorization: `Bearer ${token}`
+                                }
+                            }
+                        );
+
                         const dataImg = await resImg.json();
-                        // Este campo contiene una URL temporal que el navegador SÍ puede renderizar
-                        urlImagen = dataImg["@microsoft.graph.downloadUrl"]; 
-                    } catch (err) {
-                        console.error("Error obteniendo URL de imagen:", err);
-                        urlImagen = "sin_foto.png"; // Imagen por defecto si falla
+                        urlImagen = dataImg["@microsoft.graph.downloadUrl"] || "";
+                    } catch (error) {
+                        console.error("Error obteniendo URL de imagen:", error);
+                        urlImagen = "sin_foto.png";
                     }
                 }
 
                 detalles.push({
-                    Producto: f[1],
-                    Cantidad: f[2],
-                    Desc_Prod: f[4],
-                    Subtotal: f[5],
+                    Producto: fila[1],
+                    Cantidad: fila[2],
+                    Desc_Prod: fila[4],
+                    Subtotal: fila[5],
                     Imagen_Producto: urlImagen
                 });
             }
@@ -1002,307 +1020,193 @@ async function ImprimirFactura(idFactura) {
             detalles
         });
 
-    } catch (e) {
+    } catch (error) {
         alert("Error al buscar factura.");
     }
 }
 
 
+// ==========================================
+// 15. EDICIÓN DE FACTURA
+// ==========================================
 async function cargarFacturaParaEditar(idFactura) {
     if (!idFactura) return alert("Ingresa un ID");
-    document.getElementById('mensaje').innerText = "Buscando factura...";
+
+    setMensaje("Buscando factura...");
 
     try {
-        const token = await getAuthToken();
-        
-        // --- 1. CONSULTA DE CABECERA (TFacturas) ---
-        const resC = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { headers: { 'Authorization': `Bearer ${token}` } });
-        const dC = await resC.json();
-        // Buscamos la fila de la factura (ID está en la columna 0)
-        const fC = dC.values.find(f => f[0] && f[0].toString() === idFactura.toString());
+        const facturas = await leerTabla(CONFIG.tablas.facturas);
+        const detalle = await leerTabla(CONFIG.tablas.detalle);
+        const anticipos = await leerTabla(CONFIG.tablas.anticipos);
+
+        const fC = facturas.find(
+            (fila) => fila[0] && fila[0].toString() === idFactura.toString()
+        );
 
         if (!fC) return alert("Factura no encontrada");
 
-        // --- 2. CONSULTA DE DETALLE DE PRODUCTOS (TDetalle) ---
-        const resD = await fetch(`${graphBaseUrl}/workbook/tables/TDetalle/range`, { headers: { 'Authorization': `Bearer ${token}` } });
-        const dD = await resD.json();
-        // Filtramos las filas de productos (Factura_ID está en la columna 0)
-        const items = dD.values.filter(f => f[0] && f[0].toString() === idFactura.toString());
+        const items = detalle.filter(
+            (fila) => fila[0] && fila[0].toString() === idFactura.toString()
+        );
 
-        // ============================================================
-        // === NUEVO: 3. CONSULTA DE ANTICIPOS (TAnticipos) ===
-        // ============================================================
-        // Pedimos al Excel el rango de la tabla TAnticipos
-        const resA = await fetch(`${graphBaseUrl}/workbook/tables/TAnticipos/range`, { headers: { 'Authorization': `Bearer ${token}` } });
-        const dA = await resA.json();
-        
-        // Basándonos en tu imagen de TAnticipos, las columnas son:
-        // Col 0: Anticipo_ID | Col 1: Factura_ID | Col 2: Cliente_ID | Col 3: Fecha | Col 4: Monto | Col 5: Nota
-        
-        // Filtramos las filas de anticipos donde la Factura_ID (Columna 1) coincida
-        const pagosRegistrados = dA.values.filter(fila => fila[1] && fila[1].toString() === idFactura.toString());
-        // ============================================================
+        const pagosRegistrados = anticipos.filter(
+            (fila) => fila[1] && fila[1].toString() === idFactura.toString()
+        );
 
-        navegar('registro-ventas-Crochet');
-        
-        // Marcamos el formulario con el ID existente
-        const form = document.getElementById('formVentas');
+        navegar("registro-ventas-Crochet");
+
+        const form = document.getElementById("formVentas");
         form.dataset.modo = "edit";
-        form.dataset.idFactura = idFactura; 
-        
-        // Cambiamos el texto del botón para que el usuario sepa que está actualizando
-        if(form.querySelector('button[type="submit"]')) {
-            form.querySelector('button[type="submit"]').innerText = `Actualizar Factura ${idFactura}`;
+        form.dataset.idFactura = idFactura;
+
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        if (btnSubmit) {
+            btnSubmit.innerText = `Actualizar Factura ${idFactura}`;
         }
 
-        // --- LLENADO DE DATOS DE CABECERA EN EL FORMULARIO ---
-        // fC[2]=Cliente, fC[1]=Fecha (Serial Excel), fC[3]=Envío, fC[4]=DescGlobal
-        const inputCliente = document.getElementById('v_cliente');
-        if(inputCliente) inputCliente.value = fC[2];
-        
-        const dObj = excelSerialToDate(fC[1]);
-        const inputFecha = document.getElementById('v_fecha');
-        if(inputFecha) inputFecha.value = dObj.toISOString().split('T')[0];
-        
-        const inputEnvio = document.getElementById('v_envio');
-        if(inputEnvio) inputEnvio.value = fC[3];
-        
-        const inputDescG = document.getElementById('v_desc_global');
-        if(inputDescG) inputDescG.value = fC[4];
+        const inputCliente = document.getElementById("v_cliente");
+        const inputFecha = document.getElementById("v_fecha");
+        const inputEnvio = document.getElementById("v_envio");
+        const inputDescG = document.getElementById("v_desc_global");
 
-        // --- LLENADO DE PRODUCTOS EN EL FORMULARIO ---
-        const contenedorProductos = document.getElementById('contenedor-productos');
-        if(contenedorProductos) {
-            contenedorProductos.innerHTML = ''; // Limpiar productos base
-            items.forEach(it => {
-                // it[1]=Nombre, it[2]=Cant, it[3]=Precio, it[4]=Desc, it[6]=FileIdImg
+        if (inputCliente) inputCliente.value = fC[2];
+        if (inputFecha) inputFecha.value = excelSerialToDate(fC[1]).toISOString().split("T")[0];
+        if (inputEnvio) inputEnvio.value = fC[3];
+        if (inputDescG) inputDescG.value = fC[4];
+
+        const contenedorProductos = document.getElementById("contenedor-productos");
+        if (contenedorProductos) {
+            contenedorProductos.innerHTML = "";
+
+            items.forEach((item) => {
                 agregarFilaProducto();
-                const filasP = contenedorProductos.querySelectorAll('.fila-producto');
-                const ultimaP = filasP[filasP.length - 1];
-                
-                if(ultimaP.querySelector('.p_nombre')) ultimaP.querySelector('.p_nombre').value = it[1];
-                if(ultimaP.querySelector('.p_cantidad')) ultimaP.querySelector('.p_cantidad').value = it[2];
-                if(ultimaP.querySelector('.p_precio')) ultimaP.querySelector('.p_precio').value = it[3];
-                if(ultimaP.querySelector('.p_descuento')) ultimaP.querySelector('.p_descuento').value = it[4];
-                
-                // Nota: La imagen se tendría que volver a subir si se cambia, 
-                // pero si no se toca el input file, manejaremos la lógica para no perder el fileId.
-                ultimaP.dataset.fileid = it[6] || "sin_foto";
+
+                const filas = contenedorProductos.querySelectorAll(".fila-producto");
+                const ultima = filas[filas.length - 1];
+
+                ultima.querySelector(".p_nombre").value = item[1];
+                ultima.querySelector(".p_cantidad").value = item[2];
+                ultima.querySelector(".p_precio").value = item[3];
+                ultima.querySelector(".p_descuento").value = item[4];
+                ultima.dataset.fileid = item[6] || "sin_foto";
             });
         }
 
-        // ============================================================
-        // === NUEVO: LLENADO DE ANTICIPOS EN EL FORMULARIO ===
-        // ============================================================
-        const contenedorAnticipos = document.getElementById('contenedor-anticipos');
+        const contenedorAnticipos = document.getElementById("contenedor-anticipos");
         if (contenedorAnticipos) {
-            contenedorAnticipos.innerHTML = ''; // Limpiar anticipos base
+            contenedorAnticipos.innerHTML = "";
 
-            pagosRegistrados.forEach(pago => {
-                // Mapeo según tu imagen TAnticipos:
-                // Col 3: Fecha | Col 4: Monto | Col 5: Nota
-
-                // Llama a tu función que crea la fila visual
-                agregarFilaAnticipo(); 
-                
-                const filasA = contenedorAnticipos.querySelectorAll('.fila-anticipo');
-                const ultimaA = filasA[filasA.length - 1];
-                
-                // Llenar Fecha (Columna 3): Convertir Serial Excel a YYYY-MM-DD
-                const inputFechaA = ultimaA.querySelector('.a_fecha');
-                if(inputFechaA) {
-                    inputFechaA.value = excelSerialToDate(pago[3]).toISOString().split('T')[0];
-                }
-                
-                // Llenar Monto (Columna 4)
-                const inputMontoA = ultimaA.querySelector('.a_monto');
-                if(inputMontoA) inputMontoA.value = pago[4];
-                
-                // Llenar Nota (Columna 5)
-                const inputNotaA = ultimaA.querySelector('.a_comentario');
-                if(inputNotaA) inputNotaA.value = pago[5];
+            pagosRegistrados.forEach((pago) => {
+                agregarFilaAnticipo({
+                    fecha: excelSerialToDate(pago[3]).toISOString().split("T")[0],
+                    monto: pago[4],
+                    nota: pago[5]
+                });
             });
         }
-        // ============================================================
 
-        document.getElementById('mensaje').innerText = `Editando Factura ${idFactura}`;
-    } catch (e) {
-        console.error("Error en cargarFacturaParaEditar:", e);
-        alert("Error técnico al cargar los datos: " + e.message);
+        setMensaje(`Editando Factura ${idFactura}`);
+    } catch (error) {
+        console.error("Error en cargarFacturaParaEditar:", error);
+        alert("Error técnico al cargar los datos: " + error.message);
     }
 }
 
 
+// ==========================================
+// 16. CAMBIO DE ESTADO
+// ==========================================
 async function cambiarEstadoFactura(id, nuevoEstado) {
-    // Si el nuevoEstado es "Activo", evaluaremos si debe ser "Activa" o "Cancelada"
     const accion = nuevoEstado === "Anulada" ? "Anular" : "Reactivar";
     const confirmar = confirm(`¿Deseas ${accion} la factura ${id}?`);
+
     if (!confirmar) return;
 
     try {
         const token = await getAuthToken();
-        
-        // 1. Obtenemos el rango completo para localizar la fila exacta
-        const res = await fetch(`${graphBaseUrl}/workbook/tables/TFacturas/range`, { 
-            headers: { 'Authorization': `Bearer ${token}` } 
-        });
-        const data = await res.json();
-        
-        // 2. Localizamos la posición en el array
-        const filaEncontradaIndex = data.values.findIndex(f => f[0] && f[0].toString() === id.toString());
-        
-        if (filaEncontradaIndex === -1) return alert("No se encontró la factura.");
+        const valores = await leerTabla(CONFIG.tablas.facturas);
 
-        // 3. Clonamos la fila original
-        const filaParaActualizar = [...data.values[filaEncontradaIndex]];
-        
-        // --- LÓGICA DE ESTADO INTELIGENTE ---
-        let estadoFinal = nuevoEstado; // Por defecto lo que recibimos (Anulada o Activa)
+        const filaEncontradaIndex = valores.findIndex(
+            (fila) => fila[0] && fila[0].toString() === id.toString()
+        );
+
+        if (filaEncontradaIndex === -1) {
+            return alert("No se encontró la factura.");
+        }
+
+        const filaParaActualizar = [...valores[filaEncontradaIndex]];
+
+        let estadoFinal = nuevoEstado;
 
         if (nuevoEstado !== "Anulada") {
-            // Extraemos valores numéricos de la fila (Índice 5: Total, Índice 7: Pagado)
             const total = parseFloat(filaParaActualizar[5] || 0);
             const pagado = parseFloat(filaParaActualizar[7] || 0);
 
-            // Si lo pagado alcanza al total, el estado real es Cancelada
             if (pagado >= total && total > 0) {
                 estadoFinal = "Cancelada";
             } else {
                 estadoFinal = "Activa";
             }
         }
-        // ------------------------------------
 
-        // 4. Aplicamos el estado calculado (Columna G = índice 6)
-        filaParaActualizar[6] = estadoFinal; 
+        filaParaActualizar[6] = estadoFinal;
 
-        // 5. Calculamos el índice para itemAt (fila actual del array menos 1 del encabezado)
         const apiIndex = filaEncontradaIndex - 1;
-        const urlUpdate = `${graphBaseUrl}/workbook/tables/TFacturas/rows/itemAt(index=${apiIndex})`;
-        
+        const urlUpdate =
+            `${GRAPH_BASE_URL}/workbook/tables/${CONFIG.tablas.facturas}/rows/itemAt(index=${apiIndex})`;
+
         const resp = await fetch(urlUpdate, {
-            method: 'PATCH',
-            headers: { 
-                'Authorization': `Bearer ${token}`, 
-                'Content-Type': 'application/json' 
+            method: "PATCH",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json"
             },
-            body: JSON.stringify({ values: [filaParaActualizar] })
+            body: JSON.stringify({
+                values: [filaParaActualizar]
+            })
         });
 
         if (resp.ok) {
             alert(`Éxito: Factura ${id} ahora está ${estadoFinal}`);
-            
-            // Actualizamos la previsualización inmediatamente (se queda en la misma pantalla)
             await previsualizarFactura(id);
-
-            // Si quieres que las tablas se actualicen "por debajo" sin moverte de pantalla:
-            // Llamamos a leerExcel directamente para refrescar la memoria global
-            await leerExcel(); 
-            
-            console.log("Datos actualizados silenciosamente.");
+            await leerExcel();
         }
-
-    } catch (e) {
-        alert("Error técnico: " + e.message);
+    } catch (error) {
+        alert("Error técnico: " + error.message);
     }
 }
 
 
-async function cargarDatosParaEdicion() {
-    const idBusqueda = document.getElementById('input_factura_id').value;
-    
-    // Llamada al Excel para obtener la "foto" actual de esa factura
-    const datos = await buscarEnExcel(idBusqueda); 
-
-    // Llenar el formulario de envíos con lo que ya existe
-    document.getElementById('envio_actual').value = datos.ganancia.costo_envio;
-    // ... lógica para mostrar las direcciones del cliente ...
-}
-
-
-function validarDireccion(numeroDireccion) {
-    const valorActual = datosCliente[`Direccion_Envio${numeroDireccion}`];
-    
-    if (valorActual && valorActual !== "") {
-        const confirmar = confirm(`La Dirección ${numeroDireccion} ya tiene datos: "${valorActual}". ¿Deseas reemplazarla?`);
-        if (!confirmar) return; // Se cancela la operación
-    }
-    // Si está vacía o aceptó reemplazar, procedemos a guardar
-    guardarNuevaCoordenada(numeroDireccion);
-}
-
-function buscarProductosFactura() {
-    const idFactura = document.getElementById('busqueda_factura_costos').value.trim();
-    const body = document.getElementById('body-costos');
-    const contenedor = document.getElementById('lista-productos-costos');
-
-    if (!idFactura) {
-        alert("Por favor, ingrese un número de factura.");
-        return;
-    }
-
-    // Filtramos los productos de TDetalle que coincidan con la factura
-    // Asumiendo que 'datosDetalle' es tu variable global con la tabla TDetalle
-    const productosEncontrados = datosDetalle.filter(fila => String(fila.Factura_ID) === idFactura);
-
-    if (productosEncontrados.length === 0) {
-        alert("No se encontraron productos para esta factura.");
-        contenedor.style.display = 'none';
-        return;
-    }
-
-    // Limpiamos la tabla y la llenamos con inputs
-    body.innerHTML = '';
-    productosEncontrados.forEach(item => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${item.Producto}</td>
-            <td><input type="number" class="input-app mo-costo" data-producto="${item.Producto}" value="0"></td>
-            <td><input type="number" class="input-app mat-costo" data-producto="${item.Producto}" value="0"></td>
-        `;
-        body.appendChild(tr);
-    });
-
-    contenedor.style.display = 'block';
-}
-
-
+// ==========================================
+// 17. LIMPIEZA Y UTILIDADES
+// ==========================================
 function limpiarYRegresar() {
-    const form = document.getElementById('formVentas');
-    
-    // 1. Limpieza de datos y estados
-    form.reset();
-    form.dataset.modo = "";
-    form.dataset.idFactura = "";
-    
-    // Mantenemos tu validación del botón para que vuelva al estado original
-    if(form.querySelector('button[type="submit"]')) {
-        form.querySelector('button[type="submit"]').innerText = "Guardar Venta e Imprimir Factura";
+    const form = document.getElementById("formVentas");
+    if (form) {
+        form.reset();
+        form.dataset.modo = "";
+        form.dataset.idFactura = "";
+
+        const btnSubmit = form.querySelector('button[type="submit"]');
+        if (btnSubmit) {
+            btnSubmit.innerText = "Guardar Venta e Imprimir Factura";
+        }
     }
 
-    // 2. Limpieza de filas dinámicas (Agregamos el nuevo contenedor)
-    document.getElementById('contenedor-productos').innerHTML = '';
-    document.getElementById('contenedor-anticipos').innerHTML = '';
+    const contenedorProductos = document.getElementById("contenedor-productos");
+    const contenedorAnticipos = document.getElementById("contenedor-anticipos");
+    const modal = document.getElementById("modal-factura");
 
-    // Agregamos una fila de producto base para que no quede el espacio vacío
-    // al volver a entrar a una nueva venta.
+    if (contenedorProductos) contenedorProductos.innerHTML = "";
+    if (contenedorAnticipos) contenedorAnticipos.innerHTML = "";
+    if (modal) modal.style.display = "none";
+
     agregarFilaProducto();
-
-    // 3. Cerrar modales si estuvieran abiertos
-    const modal = document.getElementById('modal-factura');
-    if (modal) modal.style.display = 'none';
-
-    // 4. Volver al origen
-    navegar('menu');
+    navegar("menu");
 }
-
-
-// ==========================================
-// 7. FORMATO (UTILITIES)
-// ==========================================
 
 function excelSerialToDate(serial) {
-    const excelEpoch = new Date(1899, 11, 30); // Excel base date
+    const excelEpoch = new Date(1899, 11, 30);
     return new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
 }
 
@@ -1315,13 +1219,184 @@ function formatFechaDDMMYYYY(date) {
 
 function obtenerFechaComparar(serial) {
     if (!serial || isNaN(serial)) return "";
-    // Ajuste para época de Excel
+
     const excelEpoch = new Date(1899, 11, 30);
     const date = new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
-    
+
     const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-    
-    return `${yyyy}-${mm}-${dd}`; // Retorna "2026-03-14"
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+
+    return `${yyyy}-${mm}-${dd}`;
 }
+
+// ==========================================
+// 18. REPORTES
+// ==========================================
+async function irAReporteVentas() {
+    navegar("pantalla-reporte-ventas");
+
+    const contenedor = document.getElementById("lista-facturas-reporte");
+    if (contenedor) {
+        contenedor.innerHTML =
+            "<p style='text-align:center;'>⌛ Cargando datos desde Excel...</p>";
+    }
+
+    try {
+        const datos = await leerExcel();
+        const facturas = datos[CONFIG.tablas.facturas] || [];
+
+        if (!facturas.length || facturas.length === 1) {
+            if (contenedor) {
+                contenedor.innerHTML =
+                    "<p style='color:red; text-align:center;'>❌ No hay datos de facturas.</p>";
+            }
+            return;
+        }
+
+        // Guardamos sin encabezado
+        window.datosVentasGlobal = facturas.slice(1);
+
+        const fechaInicioInput = document.getElementById("filtro-fecha-inicio");
+        const fechaFinInput = document.getElementById("filtro-fecha-fin");
+        const estadoInput = document.getElementById("filtro-estado");
+
+        const hoy = new Date();
+        const primerDiaMes = new Date(
+            hoy.getFullYear(),
+            hoy.getMonth(),
+            1
+        ).toISOString().split("T")[0];
+
+        const ultimoDiaMes = new Date(
+            hoy.getFullYear(),
+            hoy.getMonth() + 1,
+            0
+        ).toISOString().split("T")[0];
+
+        if (fechaInicioInput) fechaInicioInput.value = primerDiaMes;
+        if (fechaFinInput) fechaFinInput.value = ultimoDiaMes;
+        if (estadoInput) estadoInput.value = "Cancelada";
+
+        aplicarFiltrosReporteVentas();
+    } catch (error) {
+        console.error("Error al cargar reporte:", error);
+        if (contenedor) {
+            contenedor.innerHTML =
+                `<p style='color:red; text-align:center;'>❌ Error: ${error.message}</p>`;
+        }
+    }
+}
+
+function aplicarFiltrosReporteVentas() {
+    const inicio = document.getElementById("filtro-fecha-inicio")?.value || "";
+    const fin = document.getElementById("filtro-fecha-fin")?.value || "";
+    const estadoSel =
+        document.getElementById("filtro-estado")?.value || "Cancelada";
+
+    const contenedor = document.getElementById("lista-facturas-reporte");
+
+    if (!window.datosVentasGlobal) {
+        if (contenedor) {
+            contenedor.innerHTML =
+                '<p style="text-align:center; color:#666;">No hay datos cargados.</p>';
+        }
+        return;
+    }
+
+    const filtradas = window.datosVentasGlobal.filter((fila) => {
+        const fechaF = obtenerFechaComparar(fila[1]);
+        const estadoExcel = fila[6] ? fila[6].toString().trim() : "Activa";
+
+        const cumpleFecha =
+            (!inicio || fechaF >= inicio) &&
+            (!fin || fechaF <= fin);
+
+        const cumpleEstado =
+            estadoSel === "TODAS" || estadoExcel === estadoSel;
+
+        return cumpleFecha && cumpleEstado;
+    });
+
+    if (!filtradas.length) {
+        if (contenedor) {
+            contenedor.innerHTML =
+                '<p style="text-align:center; padding:20px; color:#666;">No se encontraron facturas con esos filtros.</p>';
+        }
+        return;
+    }
+
+    renderizarReporteVentas(filtradas);
+}
+
+function renderizarReporteVentas(filas) {
+    const contenedor = document.getElementById("lista-facturas-reporte");
+    if (!contenedor) return;
+
+    const totalGeneral = filas.reduce(
+        (acc, fila) => acc + (parseFloat(fila[5]) || 0),
+        0
+    );
+
+    contenedor.innerHTML = `
+        <div style="background:#fff3e0; padding:15px; border-radius:8px; margin-bottom:20px; text-align:right; border-left:5px solid #ef6c00; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+            <span style="color:#6d4c41; font-size:0.9em; font-weight:bold;">TOTAL FILTRADO:</span><br>
+            <strong style="font-size:1.6em; color:#d84315;">C$ ${totalGeneral.toLocaleString("en-US", {
+                minimumFractionDigits: 2
+            })}</strong>
+            <p style="margin:5px 0 0 0; font-size:0.75em; color:#8d6e63;">
+                ${filas.length} factura(s) encontradas
+            </p>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="tabla-consultas" style="width:100%; font-size:0.85em; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#8d6e63; color:white;">
+                        <th style="padding:10px;">Factura N°</th>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Subtotal</th>
+                        <th>Envío</th>
+                        <th>Desc.</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filas.map((fila) => {
+                        const fechaObj = excelSerialToDate(fila[1]);
+                        const fechaFmt = `${String(fechaObj.getDate()).padStart(2, "0")}/${String(fechaObj.getMonth() + 1).padStart(2, "0")}/${fechaObj.getFullYear()}`;
+
+                        const envio = parseFloat(fila[3] || 0);
+                        const desc = parseFloat(fila[4] || 0);
+                        const totalf = parseFloat(fila[5] || 0);
+                        const subtotalCalculado = totalf - envio + desc;
+
+                        const estado = fila[6] || "Activa";
+
+                        let colorEstado = "#f57c00";
+                        if (estado === "Cancelada") colorEstado = "#2e7d32";
+                        if (estado === "Anulada") colorEstado = "#d32f2f";
+
+                        return `
+                            <tr style="border-bottom:1px solid #eee; ${estado === "Anulada" ? "text-decoration: line-through; color:#bbb; background:#fafafa;" : ""}">
+                                <td style="padding:10px; font-weight:bold;">${fila[0]}</td>
+                                <td>${fechaFmt}</td>
+                                <td style="text-align:left;">${fila[2]}</td>
+                                <td>${subtotalCalculado.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                                <td>${envio.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                                <td>${desc.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                                <td style="font-weight:bold; color:#333;">C$ ${totalf.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                                <td>
+                                    <span style="color:${colorEstado}; font-weight:bold;">${estado.toUpperCase()}</span>
+                                </td>
+                            </tr>
+                        `;
+                    }).join("")}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+

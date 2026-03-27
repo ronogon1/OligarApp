@@ -49,7 +49,8 @@ const GRAPH_BASE_URL =
 const appState = {
     clientes: [],
     tablas: {},
-    facturaActual: null
+    facturaActual: null,
+    origenActual: "Crochet"
 };
 
 // ==========================================
@@ -165,6 +166,8 @@ function navegar(pantalla) {
     if (pantalla === "registro-ventas-Crochet") {
         const form = document.getElementById("formVentas");
 
+        actualizarHeaderVenta();
+
         if (form && form.dataset.modo !== "edit") {
             const contenedorProductos =
                 document.getElementById("contenedor-productos");
@@ -188,6 +191,49 @@ function navegar(pantalla) {
         if (panel) panel.style.display = "none";
         if (inputBusqueda) inputBusqueda.value = "";
     }
+}
+
+
+function actualizarHeaderVenta() {
+    const logo = document.getElementById("header-venta-logo");
+    const titulo = document.getElementById("header-venta-titulo");
+    const subtitulo = document.getElementById("header-venta-subtitulo");
+
+    if (titulo) {
+        titulo.innerText = "Registro de Venta";
+    }
+
+    if (appState.origenActual === "Creaciones") {
+        if (logo) {
+            logo.src = "Logo_oligar_creaciones.png";
+            logo.alt = "Logo Oligar Creaciones";
+        }
+
+        if (subtitulo) {
+            subtitulo.innerText = "Oligar Creaciones";
+        }
+    } else {
+        if (logo) {
+            logo.src = "logo_oligar.png";
+            logo.alt = "Logo Oligar Crochet";
+        }
+
+        if (subtitulo) {
+            subtitulo.innerText = "Oligar Crochet";
+        }
+    }
+}
+
+function abrirVentaCrochet() {
+    appState.origenActual = "Crochet";
+    navegar("registro-ventas-Crochet");
+    actualizarHeaderVenta();
+}
+
+function abrirVentaCreaciones() {
+    appState.origenActual = "Creaciones";
+    navegar("registro-ventas-Crochet");
+    actualizarHeaderVenta();
 }
 
 
@@ -653,7 +699,8 @@ if (formVentas) {
                 descG,
                 totalF,
                 estadoFinal,
-                totalPagado
+                totalPagado,
+                appState.origenActual || "Crochet"
             ]]);
 
             limpiarYRegresar();
@@ -902,6 +949,147 @@ function generarFacturaOligarCrochet(d) {
 }
 
 
+function generarFacturaOligarCreaciones(d) {
+    const n = (num) =>
+        parseFloat(num || 0).toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+    const sumaSubtotalesProductos = d.detalles.reduce(
+        (acc, it) => acc + parseFloat(it.Subtotal || 0),
+        0
+    );
+
+    const totalFactura = parseFloat(d.Total_Factura) || 0;
+    const anticipo = parseFloat(d.Anticipo) || 0;
+    const saldoPendiente = totalFactura - anticipo;
+
+    const filas = d.detalles.map((it) => {
+        const precioUnitarioBase =
+            (parseFloat(it.Subtotal || 0) + parseFloat(it.Desc_Prod || 0)) /
+            (parseFloat(it.Cantidad || 1) || 1);
+
+        return `
+            <tr>
+                <td style="padding:10px; border-bottom:1px solid #eee;">
+                    ${it.Cantidad}x ${it.Producto}
+                    <br>
+                    ${(it.Cantidad > 1 || it.Desc_Prod > 0) ? `
+                        <small style="color:#333;">Precio unitario: ${n(precioUnitarioBase)}</small>
+                    ` : ""}
+                    ${it.Desc_Prod > 0 ? `
+                        <small style="color:#b71c1c; margin-left: 8px;">Desc: -${n(it.Desc_Prod)}</small>
+                    ` : ""}
+                </td>
+                <td style="padding:10px; text-align:right; border-bottom:1px solid #eee;">
+                    ${n(it.Subtotal)}
+                </td>
+            </tr>
+        `;
+    }).join("");
+
+    const imagenesHTML = d.detalles
+        .filter((it) => it.Imagen_Producto && it.Imagen_Producto !== "sin_foto")
+        .map((it) => `
+            <div style="text-align:center;">
+                <img src="${it.Imagen_Producto}"
+                     onerror="this.src='https://via.placeholder.com/150?text=Sin+Foto'"
+                     style="width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:5px; border:1px solid #eee;">
+                <p style="font-size:9px; color:#666; margin-top:4px;">${it.Producto}</p>
+            </div>
+        `)
+        .join("");
+
+    const contenido = `
+        <div style="color:#444; font-size:14px; font-family:sans-serif;">
+            <div style="display:flex; align-items:center; margin-bottom:20px;">
+                <div style="flex:0 0 130px; text-align:center;">
+                    <img src="Logo_oligar_creaciones.png" style="width:140px; height:auto; display:block; margin:0 auto;">
+                </div>
+
+                <div style="flex:1; text-align:center; padding-right:130px;">
+                    <h1 style="margin:0; color:#5D4037; letter-spacing:2px; font-size:24px;">OLIGAR CREACIONES</h1>
+                    <i style="color:#7E57C2; font-size:16px;">"Creando con amor"</i>
+                    <p style="margin:5px 0 0; font-size:15px; color:#46B1E1;">
+                        Managua, Nicaragua | Celular: 7841 1119<br>
+                        oligar.crochet@gmail.com
+                    </p>
+                </div>
+            </div>
+
+            <hr style="border:none; border-top:2px solid #7E57C2; margin-bottom:15px;">
+
+            <p>
+                <strong>Factura N°:</strong> ${d.Factura_ID}
+                <span style="float:right;">
+                    <strong>Fecha:</strong> ${formatFechaDDMMYYYY(excelSerialToDate(d.Fecha))}
+                </span>
+            </p>
+
+            <p style="margin:20px 0;">
+                <span style="border-left:3px solid #46B1E1; padding-left:10px;">
+                    <strong>Cliente:</strong> ${d.Cliente}
+                </span>
+            </p>
+
+            <table style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#FFFCF5;">
+                        <th style="text-align:left; padding:20px; border-bottom:5px solid #7E57C2;">Producto</th>
+                        <th style="text-align:right; padding:20px; border-bottom:5px solid #7E57C2;">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filas}
+                </tbody>
+            </table>
+
+            <table style="width:100%; border-collapse:collapse; margin-top:15px;">
+                <tr>
+                    <td style="padding:2px 10px; text-align:right; font-weight:bold; color:#333;">Subtotal:</td>
+                    <td style="padding:2px 10px; text-align:right; font-weight:bold; width:120px;">C$ ${n(sumaSubtotalesProductos)}</td>
+                </tr>
+                <tr>
+                    <td style="padding:2px 10px; text-align:right; color:#333;">Envío:</td>
+                    <td style="padding:2px 10px; text-align:right;">C$ ${n(d.Envio)}</td>
+                </tr>
+                ${d.Desc_Global > 0 ? `
+                <tr>
+                    <td style="padding:2px 10px; text-align:right; color:#b71c1c;">Desc. Global:</td>
+                    <td style="padding:2px 10px; text-align:right; color:#b71c1c;">-C$ ${n(d.Desc_Global)}</td>
+                </tr>
+                ` : ""}
+                <tr>
+                    <td style="padding:10px; text-align:right; font-weight:bold; font-size:1.2em;">TOTAL:</td>
+                    <td style="padding:10px; text-align:right; font-weight:bold; font-size:1.2em; color:#5D4037;">
+                        C$ ${n(totalFactura)}
+                    </td>
+                </tr>
+            </table>
+
+            <div style="text-align:center; margin-top:20px; padding:10px; border-top:1px solid #eee;">
+                ${saldoPendiente <= 0 ? `
+                    <h2 style="color:#7E57C2; margin:0; letter-spacing:5px; font-weight:bold;">CANCELADO</h2>
+                ` : `
+                    <span style="color:#46B1E1; font-weight:bold; font-size:1.1em;">Anticipo: C$ ${n(anticipo)}</span>
+                    <span style="margin:0 10px; color:#ccc;">|</span>
+                    <span style="color:#b71c1c; font-weight:bold; font-size:1.1em;">Saldo pendiente: C$ ${n(saldoPendiente)}</span>
+                `}
+            </div>
+
+            ${imagenesHTML ? `
+                <div style="margin-top:20px; display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; border-top:1px solid #eee; padding-top:20px;">
+                    ${imagenesHTML}
+                </div>
+            ` : ""}
+        </div>
+    `;
+
+    document.getElementById("detalle-factura").innerHTML = contenido;
+    document.getElementById("modal-factura").style.display = "block";
+}
+
 // ==========================================
 // 14. PREVISUALIZAR / IMPRIMIR FACTURA
 // ==========================================
@@ -1064,7 +1252,9 @@ async function ImprimirFactura(idFactura) {
             }
         }
 
-        generarFacturaOligarCrochet({
+        const origenFactura = fC[8] || "Crochet";
+
+        const datosFactura = {
             Factura_ID: fC[0],
             Fecha: fC[1],
             Cliente: fC[2],
@@ -1072,8 +1262,15 @@ async function ImprimirFactura(idFactura) {
             Desc_Global: fC[4],
             Total_Factura: fC[5],
             Anticipo: fC[7],
+            Origen: origenFactura,
             detalles
-        });
+        };
+
+        if (origenFactura === "Creaciones") {
+            generarFacturaOligarCreaciones(datosFactura);
+        } else {
+            generarFacturaOligarCrochet(datosFactura);
+        }
 
     } catch (error) {
         console.error(error);

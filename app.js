@@ -1004,16 +1004,17 @@ function generarFacturaOligarCreaciones(d) {
     const contenido = `
         <div style="color:#444; font-size:14px; font-family:sans-serif;">
             <div style="display:flex; align-items:center; margin-bottom:20px;">
-                <div style="flex:0 0 130px; text-align:center;">
-                    <img src="Logo_oligar_creaciones.png" style="width:140px; height:auto; display:block; margin:0 auto;">
+                <div style="flex:0 0 180px; text-align:center;">
+                    <img src="Logo_oligar_creaciones.png"
+                        style="width:180px; height:auto; display:block; margin:0 auto;">
                 </div>
 
-                <div style="flex:1; text-align:center; padding-right:130px;">
+                <div style="flex:1; text-align:center; padding-right:180px;">
                     <h1 style="margin:0; color:#5D4037; letter-spacing:2px; font-size:24px;">OLIGAR CREACIONES</h1>
                     <i style="color:#7E57C2; font-size:16px;">"Creando con amor"</i>
                     <p style="margin:5px 0 0; font-size:15px; color:#46B1E1;">
                         Managua, Nicaragua | Celular: 7841 1119<br>
-                        oligar.crochet@gmail.com
+                        oligar.creaciones@gmail.com
                     </p>
                 </div>
             </div>

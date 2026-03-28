@@ -1756,6 +1756,20 @@ function aplicarFiltrosReporteVentas() {
         return cumpleFecha && cumpleEstado && cumpleOrigen;
     });
 
+    filtradas.sort((a, b) => {
+        const fechaA = Number(a[1]) || 0;
+        const fechaB = Number(b[1]) || 0;
+
+        if (fechaA !== fechaB) {
+            return fechaA - fechaB;
+        }
+
+        const facturaA = parseInt(a[0], 10) || 0;
+        const facturaB = parseInt(b[0], 10) || 0;
+
+        return facturaA - facturaB;
+    });
+
     if (!filtradas.length) {
         if (contenedor) {
             contenedor.innerHTML =
@@ -1953,4 +1967,109 @@ async function actualizarSoloCostosUnitarios(apiIndex, mo, materiales, token) {
     if (!updateResp.ok) {
         throw new Error(`No se pudo actualizar MO/Materiales en fila ${filaExcel}.`);
     }
+}
+
+function imprimirReporteVentas() {
+    const contenido = document.getElementById("lista-facturas-reporte");
+    if (!contenido || !contenido.innerHTML.trim()) {
+        return alert("No hay reporte cargado para imprimir.");
+    }
+
+    const fechaInicio = document.getElementById("filtro-fecha-inicio")?.value || "";
+    const fechaFin = document.getElementById("filtro-fecha-fin")?.value || "";
+    const estado = document.getElementById("filtro-estado")?.value || "TODAS";
+    const origen = document.getElementById("filtro-origen")?.value || "TODOS";
+
+    const ventana = window.open("", "_blank", "width=1100,height=800");
+
+    if (!ventana) {
+        alert("No se pudo abrir la ventana de impresión.");
+        return;
+    }
+
+    ventana.document.write(`
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <title>Reporte de Ventas</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 24px;
+                    color: #333;
+                }
+
+                h1 {
+                    margin: 0 0 8px 0;
+                    color: #5D4037;
+                    font-size: 24px;
+                }
+
+                .subtitulo {
+                    margin-bottom: 18px;
+                    color: #666;
+                    font-size: 14px;
+                }
+
+                .filtros {
+                    margin-bottom: 20px;
+                    padding: 12px 16px;
+                    background: #f7f2f8;
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    font-size: 14px;
+                }
+
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 12px;
+                }
+
+                th, td {
+                    border: 1px solid #ccc;
+                    padding: 8px;
+                    text-align: center;
+                }
+
+                th {
+                    background: #8d6e63;
+                    color: white;
+                }
+
+                td.texto {
+                    text-align: left;
+                }
+
+                .resumen-reporte-ventas {
+                    margin-bottom: 18px;
+                }
+
+                @media print {
+                    body {
+                        margin: 10mm;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <h1>Reporte de Ventas</h1>
+            <div class="subtitulo">Oligar</div>
+
+            <div class="filtros">
+                <strong>Fecha inicio:</strong> ${fechaInicio || "N/A"} &nbsp;&nbsp;
+                <strong>Fecha fin:</strong> ${fechaFin || "N/A"} &nbsp;&nbsp;
+                <strong>Estado:</strong> ${estado} &nbsp;&nbsp;
+                <strong>Origen:</strong> ${origen}
+            </div>
+
+            ${contenido.innerHTML}
+        </body>
+        </html>
+    `);
+
+    ventana.document.close();
+    ventana.focus();
+    ventana.print();
 }

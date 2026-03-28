@@ -1623,6 +1623,7 @@ async function abrirPantallaEnvio(idFactura) {
         }
 
         const nombreCliente = fC[2] || "";
+
         const cliente = clientes.find(
             (fila, index) =>
                 index > 0 &&
@@ -1637,7 +1638,8 @@ async function abrirPantallaEnvio(idFactura) {
                 fila[0].toString() === idFactura.toString()
         );
 
-        const costoEnvio = parseFloat(gC?.[6]) || 0;        
+        const totalFactura = parseFloat(fC[5]) || 0;
+        const costoEnvio = parseFloat(gC?.[6]) || 0;
 
         document.getElementById("envio_factura_id").value = fC[0] || "";
         document.getElementById("envio_cliente_nombre").value = nombreCliente;
@@ -1647,12 +1649,15 @@ async function abrirPantallaEnvio(idFactura) {
         document.getElementById("envio_total_factura").value =
             `C$ ${totalFactura.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
         document.getElementById("envio_origen_factura").value = fC[8] || "Crochet";
+
         document.getElementById("envio_cliente_id").value = cliente?.[0] || "";
         document.getElementById("envio_telefono").value = cliente?.[2] || "";
+        document.getElementById("envio_nota_cliente").value = cliente?.[6] || "";
+
         document.getElementById("envio_costo_envio").value = costoEnvio || 0;
+
         document.getElementById("envio_direccion_destino").value = "1";
         document.getElementById("envio_direccion_texto").value = cliente?.[3] || "";
-        document.getElementById("envio_nota_cliente").value = cliente?.[6] || "";
 
         appState.facturaActual = {
             facturaId: fC[0],

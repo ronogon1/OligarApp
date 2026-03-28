@@ -1647,59 +1647,51 @@ function obtenerFechaComparar(serial) {
 // ==========================================
 // 18. REPORTES Y FUNCIONES AUXILIARES
 // ==========================================
-async function irAReporteVentas() {
-    navegar("pantalla-reporte-ventas");
+function aplicarFiltrosReporteVentas() {
+    const inicio = document.getElementById("filtro-fecha-inicio")?.value || "";
+    const fin = document.getElementById("filtro-fecha-fin")?.value || "";
+    const estadoSel =
+        document.getElementById("filtro-estado")?.value || "Cancelada";
+    const origenSel =
+        document.getElementById("filtro-origen")?.value || "TODOS";
 
     const contenedor = document.getElementById("lista-facturas-reporte");
-    if (contenedor) {
-        contenedor.innerHTML =
-            "<p style='text-align:center;'>⌛ Cargando datos desde Excel...</p>";
-    }
 
-    try {
-        const datos = await leerExcel();
-        const facturas = datos[CONFIG.tablas.facturas] || [];
-
-        if (!facturas.length || facturas.length === 1) {
-            if (contenedor) {
-                contenedor.innerHTML =
-                    "<p style='color:red; text-align:center;'>❌ No hay datos de facturas.</p>";
-            }
-            return;
-        }
-
-        // Guardamos sin encabezado
-        window.datosVentasGlobal = facturas.slice(1);
-
-        const fechaInicioInput = document.getElementById("filtro-fecha-inicio");
-        const fechaFinInput = document.getElementById("filtro-fecha-fin");
-        const estadoInput = document.getElementById("filtro-estado");
-
-        const hoy = new Date();
-        const primerDiaMes = new Date(
-            hoy.getFullYear(),
-            hoy.getMonth(),
-            1
-        ).toISOString().split("T")[0];
-
-        const ultimoDiaMes = new Date(
-            hoy.getFullYear(),
-            hoy.getMonth() + 1,
-            0
-        ).toISOString().split("T")[0];
-
-        if (fechaInicioInput) fechaInicioInput.value = primerDiaMes;
-        if (fechaFinInput) fechaFinInput.value = ultimoDiaMes;
-        if (estadoInput) estadoInput.value = "Cancelada";
-
-        aplicarFiltrosReporteVentas();
-    } catch (error) {
-        console.error("Error al cargar reporte:", error);
+    if (!window.datosVentasGlobal) {
         if (contenedor) {
             contenedor.innerHTML =
-                `<p style='color:red; text-align:center;'>❌ Error: ${error.message}</p>`;
+                '<p style="text-align:center; color:#666;">No hay datos cargados.</p>';
         }
+        return;
     }
+
+    const filtradas = window.datosVentasGlobal.filter((fila) => {
+        const fechaF = obtenerFechaComparar(fila[1]);
+        const estadoExcel = fila[6] ? fila[6].toString().trim() : "Activa";
+        const origenExcel = fila[8] ? fila[8].toString().trim() : "Crochet";
+
+        const cumpleFecha =
+            (!inicio || fechaF >= inicio) &&
+            (!fin || fechaF <= fin);
+
+        const cumpleEstado =
+            estadoSel === "TODAS" || estadoExcel === estadoSel;
+
+        const cumpleOrigen =
+            origenSel === "TODOS" || origenExcel === origenSel;
+
+        return cumpleFecha && cumpleEstado && cumpleOrigen;
+    });
+
+    if (!filtradas.length) {
+        if (contenedor) {
+            contenedor.innerHTML =
+                '<p style="text-align:center; padding:20px; color:#666;">No se encontraron facturas con esos filtros.</p>';
+        }
+        return;
+    }
+
+    renderizarReporteVentas(filtradas);
 }
 
 function aplicarFiltrosReporteVentas() {
@@ -1753,7 +1745,7 @@ function renderizarReporteVentas(filas) {
     );
 
     contenedor.innerHTML = `
-        <div style="background:#fff3e0; padding:15px; border-radius:8px; margin-bottom:20px; text-align:right; border-left:5px solid #ef6c00; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+        <div class="resumen-reporte-ventas">
             <span style="color:#6d4c41; font-size:0.9em; font-weight:bold;">TOTAL FILTRADO:</span><br>
             <strong style="font-size:1.6em; color:#d84315;">C$ ${totalGeneral.toLocaleString("en-US", {
                 minimumFractionDigits: 2
@@ -1763,13 +1755,14 @@ function renderizarReporteVentas(filas) {
             </p>
         </div>
 
-        <div style="overflow-x:auto;">
-            <table class="tabla-consultas" style="width:100%; font-size:0.85em; border-collapse:collapse;">
+        <div class="tabla-reporte-wrap">
+            <table class="tabla-reporte-ventas">
                 <thead>
                     <tr style="background:#8d6e63; color:white;">
                         <th style="padding:10px;">Factura N°</th>
                         <th>Fecha</th>
                         <th>Cliente</th>
+                        <th>Origen</th>
                         <th>Subtotal</th>
                         <th>Envío</th>
                         <th>Desc.</th>
@@ -1786,8 +1779,8 @@ function renderizarReporteVentas(filas) {
                         const desc = parseFloat(fila[4] || 0);
                         const totalf = parseFloat(fila[5] || 0);
                         const subtotalCalculado = totalf - envio + desc;
-
                         const estado = fila[6] || "Activa";
+                        const origen = fila[8] || "Crochet";
 
                         let colorEstado = "#f57c00";
                         if (estado === "Cancelada") colorEstado = "#2e7d32";
@@ -1798,6 +1791,7 @@ function renderizarReporteVentas(filas) {
                                 <td style="padding:10px; font-weight:bold;">${fila[0]}</td>
                                 <td>${fechaFmt}</td>
                                 <td style="text-align:left;">${fila[2]}</td>
+                                <td>${origen}</td>
                                 <td>${subtotalCalculado.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
                                 <td>${envio.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
                                 <td>${desc.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>

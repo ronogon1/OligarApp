@@ -539,3 +539,45 @@ tbody tr:nth-child(even) {
         letter-spacing: 0.5px;
     }
 }
+
+/* ============================================================
+   REPORTE DE VENTAS RESPONSIVE
+   ============================================================ */
+.filtros-reporte-ventas {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr auto;
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: end;
+}
+
+.resumen-reporte-ventas {
+    background: #fff3e0;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    text-align: right;
+    border-left: 5px solid #ef6c00;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.tabla-reporte-wrap {
+    overflow-x: auto;
+}
+
+.tabla-reporte-ventas {
+    width: 100%;
+    font-size: 0.85em;
+    border-collapse: collapse;
+    min-width: 820px;
+}
+
+@media (max-width: 768px) {
+    .filtros-reporte-ventas {
+        grid-template-columns: 1fr;
+    }
+
+    .resumen-reporte-ventas {
+        text-align: left;
+    }
+}

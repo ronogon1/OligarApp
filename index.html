@@ -711,13 +711,54 @@
             <h3>📊 Reporte de Ventas</h3>
 
             <div
-                style="
-                    display: grid;
-                    grid-template-columns: 1fr 1fr 1fr auto;
-                    gap: 10px;
-                    margin-bottom: 20px;
-                    align-items: end;
-                "
+                <div class="filtros-reporte-ventas">
+                    <div>
+                        <label for="filtro-fecha-inicio">Fecha inicio</label>
+                        <input
+                            type="date"
+                            id="filtro-fecha-inicio"
+                            style="width: 100%;"
+                        >
+                    </div>
+
+                    <div>
+                        <label for="filtro-fecha-fin">Fecha fin</label>
+                        <input
+                            type="date"
+                            id="filtro-fecha-fin"
+                            style="width: 100%;"
+                        >
+                    </div>
+
+                    <div>
+                        <label for="filtro-estado">Estado</label>
+                        <select
+                            id="filtro-estado"
+                            style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;"
+                        >
+                            <option value="Cancelada">Sólo canceladas</option>
+                            <option value="Activa">Sólo activas</option>
+                            <option value="Anulada">Sólo anuladas</option>
+                            <option value="TODAS">Todas</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="filtro-origen">Origen</label>
+                        <select
+                            id="filtro-origen"
+                            style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;"
+                        >
+                            <option value="TODOS">Todos</option>
+                            <option value="Crochet">Crochet</option>
+                            <option value="Creaciones">Creaciones</option>
+                        </select>
+                    </div>
+
+                    <button onclick="aplicarFiltrosReporteVentas()" class="btn-enfoque">
+                        Filtrar
+                    </button>
+                </div>
             >
                 <div>
                     <label for="filtro-fecha-inicio">Fecha inicio</label>

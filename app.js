@@ -1162,6 +1162,7 @@ async function previsualizarFactura(idParam) {
         const btnActivar = document.getElementById("btn-pre-activar");
         const btnImprimir = document.getElementById("btn-pre-imprimir");
         const btnCostos = document.getElementById("btn-pre-costos");
+        const btnEnvio = document.getElementById("btn-pre-envio");
 
         if (txtStatus) txtStatus.innerText = estado.toUpperCase();
 
@@ -1169,6 +1170,7 @@ async function previsualizarFactura(idParam) {
         if (btnAnular) btnAnular.style.display = "block";
         if (btnActivar) btnActivar.style.display = "none";
         if (btnCostos) btnCostos.onclick = () => abrirPantallaCostos(id);
+        if (btnEnvio) btnEnvio.onclick = () => abrirPantallaEnvio(id);
 
         if (estado === "Anulada") {
             if (badge) {
@@ -1597,6 +1599,215 @@ async function guardarCostosFactura() {
         ocultarOverlayCarga();
     }
 }
+
+async function abrirPantallaEnvio(idFactura) {
+    if (!idFactura) return alert("No se recibió Factura ID.");
+
+    try {
+        mostrarOverlayCarga("Cargando envío...");
+
+        const facturas = await leerTabla(CONFIG.tablas.facturas);
+        const clientes = await leerTabla(CONFIG.tablas.clientes);
+        const ganancias = await leerTabla(CONFIG.tablas.ganancia);
+
+        const fC = facturas.find(
+            (fila, index) =>
+                index > 0 &&
+                fila[0] &&
+                fila[0].toString() === idFactura.toString()
+        );
+
+        if (!fC) {
+            alert("No se encontró la factura.");
+            return;
+        }
+
+        const nombreCliente = fC[2] || "";
+        const cliente = clientes.find(
+            (fila, index) =>
+                index > 0 &&
+                fila[1] &&
+                fila[1].toString().trim() === nombreCliente.toString().trim()
+        );
+
+        const gC = ganancias.find(
+            (fila, index) =>
+                index > 0 &&
+                fila[0] &&
+                fila[0].toString() === idFactura.toString()
+        );
+
+        const totalFactura = parseFloat(fC[5]) || 0;
+        const costosFactura = parseFloat(gC?.[5]) || 0;
+        const costoEnvio = parseFloat(gC?.[6]) || 0;
+        const gananciaActual = parseFloat(gC?.[7]) || 0;
+
+        document.getElementById("envio_factura_id").value = fC[0] || "";
+        document.getElementById("envio_cliente_nombre").value = nombreCliente;
+        document.getElementById("envio_estado_factura").value = fC[6] || "";
+        document.getElementById("envio_fecha_factura").value =
+            formatFechaDDMMYYYY(excelSerialToDate(fC[1]));
+        document.getElementById("envio_total_factura").value =
+            `C$ ${totalFactura.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+        document.getElementById("envio_origen_factura").value = fC[8] || "Crochet";
+
+        document.getElementById("envio_cliente_id").value = cliente?.[0] || "";
+        document.getElementById("envio_telefono").value = cliente?.[2] || "";
+
+        document.getElementById("envio_costos_factura").value =
+            `C$ ${costosFactura.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+        document.getElementById("envio_costo_envio").value = costoEnvio || 0;
+        document.getElementById("envio_ganancia_actual").value =
+            `C$ ${gananciaActual.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+        document.getElementById("envio_ganancia_proyectada").value =
+            `C$ ${(totalFactura - costosFactura - costoEnvio).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+
+        document.getElementById("envio_direccion_destino").value = "1";
+        document.getElementById("envio_direccion_texto").value = cliente?.[3] || "";
+
+        appState.facturaActual = {
+            facturaId: fC[0],
+            clienteNombre: nombreCliente,
+            clienteId: cliente?.[0] || "",
+            clienteRow: cliente || null
+        };
+
+        navegar("programar-envio");
+    } catch (error) {
+        console.error(error);
+        alert("Error al abrir programación de envío: " + error.message);
+    } finally {
+        ocultarOverlayCarga();
+    }
+}
+
+
+const selectDireccionEnvio = document.getElementById("envio_direccion_destino");
+if (selectDireccionEnvio) {
+    selectDireccionEnvio.addEventListener("change", () => {
+        const cliente = appState.facturaActual?.clienteRow;
+        if (!cliente) return;
+
+        const destino = selectDireccionEnvio.value;
+        let texto = "";
+
+        if (destino === "1") texto = cliente[3] || "";
+        if (destino === "2") texto = cliente[4] || "";
+        if (destino === "3") texto = cliente[5] || "";
+
+        document.getElementById("envio_direccion_texto").value = texto;
+    });
+}
+
+const inputCostoEnvio = document.getElementById("envio_costo_envio");
+if (inputCostoEnvio) {
+    inputCostoEnvio.addEventListener("input", recalcularGananciaProyectadaEnvio);
+}
+
+function recalcularGananciaProyectadaEnvio() {
+    const totalTxt = document.getElementById("envio_total_factura")?.value || "0";
+    const costosTxt = document.getElementById("envio_costos_factura")?.value || "0";
+    const envio = parseFloat(document.getElementById("envio_costo_envio")?.value) || 0;
+
+    const total = parseFloat(totalTxt.replace(/[^\d.-]/g, "")) || 0;
+    const costos = parseFloat(costosTxt.replace(/[^\d.-]/g, "")) || 0;
+
+    const ganancia = total - costos - envio;
+
+    document.getElementById("envio_ganancia_proyectada").value =
+        `C$ ${ganancia.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+}
+
+
+async function guardarProgramacionEnvio() {
+    const facturaId = document.getElementById("envio_factura_id")?.value;
+    const clienteId = document.getElementById("envio_cliente_id")?.value;
+    const telefono = document.getElementById("envio_telefono")?.value || "";
+    const destino = document.getElementById("envio_direccion_destino")?.value || "1";
+    const direccion = document.getElementById("envio_direccion_texto")?.value || "";
+    const costoEnvio = parseFloat(document.getElementById("envio_costo_envio")?.value) || 0;
+
+    if (!facturaId) return alert("No hay factura seleccionada.");
+    if (!clienteId) return alert("No se encontró el cliente.");
+    if (!direccion.trim()) return alert("Debes ingresar una dirección o referencia.");
+
+    try {
+        mostrarOverlayCarga("Guardando envío...");
+
+        const token = await getAuthToken();
+
+        // --- TCLIENTES: solo Teléfono + Dirección seleccionada ---
+        const clientes = await leerTabla(CONFIG.tablas.clientes);
+
+        const clienteIndex = clientes.findIndex(
+            (fila, index) =>
+                index > 0 &&
+                fila[0] &&
+                fila[0].toString() === clienteId.toString()
+        );
+
+        if (clienteIndex === -1) {
+            throw new Error("No se encontró el cliente en TClientes.");
+        }
+
+        const clienteApiIndex = clienteIndex - 1;
+
+        const cambiosCliente = [
+            { indiceRelativo: 2, valor: telefono }
+        ];
+
+        if (destino === "1") {
+            cambiosCliente.push({ indiceRelativo: 3, valor: direccion });
+        } else if (destino === "2") {
+            cambiosCliente.push({ indiceRelativo: 4, valor: direccion });
+        } else if (destino === "3") {
+            cambiosCliente.push({ indiceRelativo: 5, valor: direccion });
+        }
+
+        await actualizarCeldasEspecificasTabla(
+            CONFIG.tablas.clientes,
+            clienteApiIndex,
+            cambiosCliente,
+            token
+        );
+
+        // --- TGANANCIA: solo Costo_Envio ---
+        const ganancias = await leerTabla(CONFIG.tablas.ganancia);
+
+        const gananciaIndex = ganancias.findIndex(
+            (fila, index) =>
+                index > 0 &&
+                fila[0] &&
+                fila[0].toString() === facturaId.toString()
+        );
+
+        if (gananciaIndex === -1) {
+            throw new Error("No se encontró la factura en TGanancia.");
+        }
+
+        const gananciaApiIndex = gananciaIndex - 1;
+
+        await actualizarCeldasEspecificasTabla(
+            CONFIG.tablas.ganancia,
+            gananciaApiIndex,
+            [{ indiceRelativo: 6, valor: costoEnvio }],
+            token
+        );
+
+        await actualizarMemoriaClientes();
+        await leerExcel();
+
+        alert("Programación de envío guardada correctamente.");
+        await previsualizarFactura(facturaId);
+        navegar("gestion-facturas");
+    } catch (error) {
+        console.error(error);
+        alert("Error al guardar programación de envío: " + error.message);
+    } finally {
+        ocultarOverlayCarga();
+    }
+}
+
 
 // ==========================================
 // 17. LIMPIEZA Y UTILIDADES
@@ -2337,4 +2548,59 @@ function imprimirReporteGanancias() {
     ventana.document.close();
     ventana.focus();
     ventana.print();
+}
+
+async function actualizarCeldasEspecificasTabla(nombreTabla, apiIndex, cambios, token) {
+    const rowRangeUrl =
+        `${GRAPH_BASE_URL}/workbook/tables/${nombreTabla}/rows/itemAt(index=${apiIndex})/range`;
+
+    const rowResp = await fetch(rowRangeUrl, {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    if (!rowResp.ok) {
+        throw new Error(`No se pudo obtener la fila de ${nombreTabla}.`);
+    }
+
+    const rowData = await rowResp.json();
+    const address = rowData.address; // Ej: Hoja1!A7:H7
+
+    const [sheetPart, rangePart] = address.split("!");
+    const sheetName = sheetPart.replace(/^'/, "").replace(/'$/, "");
+
+    const colMatch = rangePart.match(/^([A-Z]+)/i);
+    const rowMatch = rangePart.match(/(\d+)/);
+
+    if (!colMatch || !rowMatch) {
+        throw new Error(`No se pudo interpretar la dirección de la fila en ${nombreTabla}.`);
+    }
+
+    const colInicial = colMatch[1].toUpperCase();
+    const filaExcel = rowMatch[1];
+    const indiceColInicial = letraAIndiceColumna(colInicial);
+
+    for (const cambio of cambios) {
+        const colLetra = indiceAColumnaLetra(indiceColInicial + cambio.indiceRelativo);
+        const rangoLocal = `${colLetra}${filaExcel}`;
+
+        const updateUrl =
+            `${GRAPH_BASE_URL}/workbook/worksheets('${sheetName}')/range(address='${rangoLocal}')`;
+
+        const updateResp = await fetch(updateUrl, {
+            method: "PATCH",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                values: [[cambio.valor]]
+            })
+        });
+
+        if (!updateResp.ok) {
+            throw new Error(`No se pudo actualizar ${nombreTabla} en ${rangoLocal}.`);
+        }
+    }
 }

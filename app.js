@@ -1117,6 +1117,7 @@ async function previsualizarFactura(idParam) {
         const preSaldo = document.getElementById("pre_saldo");
         const preEnvio = document.getElementById("pre_envio");
         const prePagado = document.getElementById("pre_pagado");
+        const preOrigen = document.getElementById("pre_origen");
 
         if (preCliente) preCliente.value = fC[2];
         if (preFecha) preFecha.value = excelSerialToDate(fC[1]).toLocaleDateString();
@@ -1124,6 +1125,8 @@ async function previsualizarFactura(idParam) {
         const totalFactura = parseFloat(fC[5]) || 0;
         const totalPagado = parseFloat(fC[7]) || 0;
         const saldo = totalFactura - totalPagado;
+        const origenFactura = fC[8] || "Crochet";
+        if (preOrigen) preOrigen.value = origenFactura;
 
         if (preTotal) {
             preTotal.value = "C$ " + totalFactura.toLocaleString("en-US", {
@@ -1302,6 +1305,9 @@ async function cargarFacturaParaEditar(idFactura) {
         );
 
         if (!fC) return alert("Factura no encontrada");
+
+        const origenFactura = fC[8] || "Crochet";
+        appState.origenActual = origenFactura;
 
         const items = detalle.filter(
             (fila) => fila[0] && fila[0].toString() === idFactura.toString()

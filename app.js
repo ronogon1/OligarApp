@@ -1647,6 +1647,64 @@ function obtenerFechaComparar(serial) {
 // ==========================================
 // 18. REPORTES Y FUNCIONES AUXILIARES
 // ==========================================
+
+async function irAReporteVentas() {
+    navegar("pantalla-reporte-ventas");
+
+    const contenedor = document.getElementById("lista-facturas-reporte");
+    if (contenedor) {
+        contenedor.innerHTML =
+            "<p style='text-align:center;'>⌛ Cargando datos desde Excel...</p>";
+    }
+
+    try {
+        const datos = await leerExcel();
+        const facturas = datos[CONFIG.tablas.facturas] || [];
+
+        if (!facturas.length || facturas.length === 1) {
+            if (contenedor) {
+                contenedor.innerHTML =
+                    "<p style='color:red; text-align:center;'>❌ No hay datos de facturas.</p>";
+            }
+            return;
+        }
+
+        window.datosVentasGlobal = facturas.slice(1);
+
+        const fechaInicioInput = document.getElementById("filtro-fecha-inicio");
+        const fechaFinInput = document.getElementById("filtro-fecha-fin");
+        const estadoInput = document.getElementById("filtro-estado");
+        const origenInput = document.getElementById("filtro-origen");
+
+        const hoy = new Date();
+        const primerDiaMes = new Date(
+            hoy.getFullYear(),
+            hoy.getMonth(),
+            1
+        ).toISOString().split("T")[0];
+
+        const ultimoDiaMes = new Date(
+            hoy.getFullYear(),
+            hoy.getMonth() + 1,
+            0
+        ).toISOString().split("T")[0];
+
+        if (fechaInicioInput) fechaInicioInput.value = primerDiaMes;
+        if (fechaFinInput) fechaFinInput.value = ultimoDiaMes;
+        if (estadoInput) estadoInput.value = "Cancelada";
+        if (origenInput) origenInput.value = "TODOS";
+
+        aplicarFiltrosReporteVentas();
+    } catch (error) {
+        console.error("Error al cargar reporte:", error);
+        if (contenedor) {
+            contenedor.innerHTML =
+                `<p style='color:red; text-align:center;'>❌ Error: ${error.message}</p>`;
+        }
+    }
+}
+
+
 function aplicarFiltrosReporteVentas() {
     const inicio = document.getElementById("filtro-fecha-inicio")?.value || "";
     const fin = document.getElementById("filtro-fecha-fin")?.value || "";
@@ -1694,46 +1752,6 @@ function aplicarFiltrosReporteVentas() {
     renderizarReporteVentas(filtradas);
 }
 
-function aplicarFiltrosReporteVentas() {
-    const inicio = document.getElementById("filtro-fecha-inicio")?.value || "";
-    const fin = document.getElementById("filtro-fecha-fin")?.value || "";
-    const estadoSel =
-        document.getElementById("filtro-estado")?.value || "Cancelada";
-
-    const contenedor = document.getElementById("lista-facturas-reporte");
-
-    if (!window.datosVentasGlobal) {
-        if (contenedor) {
-            contenedor.innerHTML =
-                '<p style="text-align:center; color:#666;">No hay datos cargados.</p>';
-        }
-        return;
-    }
-
-    const filtradas = window.datosVentasGlobal.filter((fila) => {
-        const fechaF = obtenerFechaComparar(fila[1]);
-        const estadoExcel = fila[6] ? fila[6].toString().trim() : "Activa";
-
-        const cumpleFecha =
-            (!inicio || fechaF >= inicio) &&
-            (!fin || fechaF <= fin);
-
-        const cumpleEstado =
-            estadoSel === "TODAS" || estadoExcel === estadoSel;
-
-        return cumpleFecha && cumpleEstado;
-    });
-
-    if (!filtradas.length) {
-        if (contenedor) {
-            contenedor.innerHTML =
-                '<p style="text-align:center; padding:20px; color:#666;">No se encontraron facturas con esos filtros.</p>';
-        }
-        return;
-    }
-
-    renderizarReporteVentas(filtradas);
-}
 
 function renderizarReporteVentas(filas) {
     const contenedor = document.getElementById("lista-facturas-reporte");
@@ -1825,6 +1843,43 @@ function indiceAColumnaLetra(numero) {
     }
     return letra;
 }
+
+
+async function mostrarReporteGanancias() {
+    navegar("pantalla-reporte-ganancias");
+
+    const contenedor = document.getElementById("lista-ganancias");
+    if (contenedor) {
+        contenedor.innerHTML =
+            "<p style='text-align:center;'>⌛ Cargando datos...</p>";
+    }
+
+    try {
+        const datos = await leerExcel();
+        const ganancias = datos[CONFIG.tablas.ganancia] || [];
+
+        if (!ganancias.length || ganancias.length === 1) {
+            if (contenedor) {
+                contenedor.innerHTML =
+                    "<p style='color:red; text-align:center;'>❌ No hay datos de ganancias.</p>";
+            }
+            return;
+        }
+
+        // Guardamos global para filtros futuros
+        window.datosGananciasGlobal = ganancias.slice(1);
+
+        renderizarReporteGanancias(window.datosGananciasGlobal);
+
+    } catch (error) {
+        console.error(error);
+        if (contenedor) {
+            contenedor.innerHTML =
+                `<p style='color:red; text-align:center;'>❌ Error: ${error.message}</p>`;
+        }
+    }
+}
+
 
 async function actualizarSoloCostosUnitarios(apiIndex, mo, materiales, token) {
     // 1. Obtener el address real de la fila dentro de la tabla

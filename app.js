@@ -858,7 +858,7 @@ function generarFacturaOligarCrochet(d) {
                 <img src="${it.Imagen_Producto}"
                      onerror="this.src='https://via.placeholder.com/150?text=Sin+Foto'"
                      style="width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:5px; border:1px solid #eee;">
-                <p style="font-size:9px; color:#666; margin-top:4px;">${it.Producto}</p>
+                <p style="font-size:9px; color:#444; margin-top:4px;">${it.Producto}</p>
             </div>
         `)
         .join("");
@@ -996,7 +996,7 @@ function generarFacturaOligarCreaciones(d) {
                 <img src="${it.Imagen_Producto}"
                      onerror="this.src='https://via.placeholder.com/150?text=Sin+Foto'"
                      style="width:100%; aspect-ratio:1/1; object-fit:cover; border-radius:5px; border:1px solid #eee;">
-                <p style="font-size:9px; color:#666; margin-top:4px;">${it.Producto}</p>
+                <p style="font-size:9px; color:#444; margin-top:4px;">${it.Producto}</p>
             </div>
         `)
         .join("");
@@ -1716,7 +1716,7 @@ function aplicarFiltrosReporteVentas() {
     const inicio = document.getElementById("filtro-fecha-inicio")?.value || "";
     const fin = document.getElementById("filtro-fecha-fin")?.value || "";
     const estadoSel =
-        document.getElementById("filtro-estado")?.value || "ABIERTAS";
+        document.getElementById("filtro-estado")?.value || "Sin Anuladas";
     const origenSel =
         document.getElementById("filtro-origen")?.value || "TODOS";
 
@@ -1725,7 +1725,7 @@ function aplicarFiltrosReporteVentas() {
     if (!window.datosVentasGlobal) {
         if (contenedor) {
             contenedor.innerHTML =
-                '<p style="text-align:center; color:#666;">No hay datos cargados.</p>';
+                '<p style="text-align:center; color:#333;">No hay datos cargados.</p>';
         }
         return;
     }
@@ -1773,7 +1773,7 @@ function aplicarFiltrosReporteVentas() {
     if (!filtradas.length) {
         if (contenedor) {
             contenedor.innerHTML =
-                '<p style="text-align:center; padding:20px; color:#666;">No se encontraron facturas con esos filtros.</p>';
+                '<p style="text-align:center; padding:20px; color:#444;">No se encontraron facturas con esos filtros.</p>';
         }
         return;
     }
@@ -1877,36 +1877,237 @@ function indiceAColumnaLetra(numero) {
 async function mostrarReporteGanancias() {
     navegar("pantalla-reporte-ganancias");
 
-    const contenedor = document.getElementById("lista-ganancias");
-    if (contenedor) {
-        contenedor.innerHTML =
-            "<p style='text-align:center;'>⌛ Cargando datos...</p>";
+    const lista = document.getElementById("lista-ganancias");
+    const resumen = document.getElementById("resumen-ganancias");
+
+    if (lista) {
+        lista.innerHTML = "<p style='text-align:center;'>⌛ Cargando datos...</p>";
+    }
+    if (resumen) {
+        resumen.innerHTML = "";
     }
 
     try {
         const datos = await leerExcel();
-        const ganancias = datos[CONFIG.tablas.ganancia] || [];
 
-        if (!ganancias.length || ganancias.length === 1) {
-            if (contenedor) {
-                contenedor.innerHTML =
-                    "<p style='color:red; text-align:center;'>❌ No hay datos de ganancias.</p>";
+        const facturas = datos[CONFIG.tablas.facturas] || [];
+        const costos = datos[CONFIG.tablas.costos] || [];
+        const ganancia = datos[CONFIG.tablas.ganancia] || [];
+
+        if (facturas.length <= 1) {
+            if (lista) {
+                lista.innerHTML = "<p style='color:red; text-align:center;'>❌ No hay datos.</p>";
             }
             return;
         }
 
-        // Guardamos global para filtros futuros
-        window.datosGananciasGlobal = ganancias.slice(1);
+        const mapaCostos = {};
+        costos.slice(1).forEach((fila) => {
+            const facturaId = fila[1];
+            const cantidad = parseFloat(fila[4]) || 0;
+            const moUnit = parseFloat(fila[6]) || 0;
+            const matUnit = parseFloat(fila[7]) || 0;
 
-        renderizarReporteGanancias(window.datosGananciasGlobal);
+            if (!facturaId) return;
 
+            if (!mapaCostos[facturaId]) {
+                mapaCostos[facturaId] = {
+                    mo: 0,
+                    materiales: 0
+                };
+            }
+
+            mapaCostos[facturaId].mo += cantidad * moUnit;
+            mapaCostos[facturaId].materiales += cantidad * matUnit;
+        });
+
+        const mapaGanancia = {};
+        ganancia.slice(1).forEach((fila) => {
+            const facturaId = fila[0];
+            if (!facturaId) return;
+
+            mapaGanancia[facturaId] = {
+                costoEnvio: parseFloat(fila[6]) || 0,
+                gananciaVenta: parseFloat(fila[7]) || 0
+            };
+        });
+
+        window.datosGananciasGlobal = facturas.slice(1).map((fila) => {
+            const facturaId = fila[0];
+            const fecha = fila[1];
+            const cliente = fila[2];
+            const total = parseFloat(fila[5]) || 0;
+            const estado = fila[6] || "Activa";
+            const origen = fila[8] || "Crochet";
+
+            const costosFactura = mapaCostos[facturaId] || {
+                mo: 0,
+                materiales: 0
+            };
+
+            const gananciaFactura = mapaGanancia[facturaId] || {
+                costoEnvio: 0,
+                gananciaVenta: 0
+            };
+
+            return {
+                facturaId,
+                fecha,
+                cliente,
+                total,
+                estado,
+                origen,
+                mo: costosFactura.mo,
+                materiales: costosFactura.materiales,
+                envio: gananciaFactura.costoEnvio,
+                ganancia: gananciaFactura.gananciaVenta
+            };
+        });
+
+        const periodoInput = document.getElementById("filtro-ganancia-periodo");
+        const origenInput = document.getElementById("filtro-ganancia-origen");
+
+        const hoy = new Date();
+        const yyyy = hoy.getFullYear();
+        const mm = String(hoy.getMonth() + 1).padStart(2, "0");
+
+        if (periodoInput) periodoInput.value = `${yyyy}-${mm}`;
+        if (origenInput) origenInput.value = "TODOS";
+
+        aplicarFiltrosReporteGanancias();
     } catch (error) {
         console.error(error);
-        if (contenedor) {
-            contenedor.innerHTML =
-                `<p style='color:red; text-align:center;'>❌ Error: ${error.message}</p>`;
+        if (lista) {
+            lista.innerHTML = `<p style='color:red; text-align:center;'>❌ Error: ${error.message}</p>`;
         }
     }
+}
+
+
+function aplicarFiltrosReporteGanancias() {
+    const periodo = document.getElementById("filtro-ganancia-periodo")?.value || "";
+    const origenSel =
+        document.getElementById("filtro-ganancia-origen")?.value || "TODOS";
+
+    const lista = document.getElementById("lista-ganancias");
+    const resumen = document.getElementById("resumen-ganancias");
+
+    if (!window.datosGananciasGlobal) {
+        if (lista) {
+            lista.innerHTML = '<p style="text-align:center; color:#666;">No hay datos cargados.</p>';
+        }
+        return;
+    }
+
+    const filtradas = window.datosGananciasGlobal.filter((fila) => {
+        const fechaComparar = obtenerFechaComparar(fila.fecha);
+        const periodoFila = fechaComparar ? fechaComparar.slice(0, 7) : "";
+
+        const cumplePeriodo = !periodo || periodoFila === periodo;
+        const cumpleOrigen = origenSel === "TODOS" || fila.origen === origenSel;
+        const noAnulada = fila.estado !== "Anulada";
+
+        return cumplePeriodo && cumpleOrigen && noAnulada;
+    });
+
+    filtradas.sort((a, b) => {
+        const fechaA = Number(a.fecha) || 0;
+        const fechaB = Number(b.fecha) || 0;
+
+        if (fechaA !== fechaB) {
+            return fechaA - fechaB;
+        }
+
+        const facturaA = parseInt(a.facturaId, 10) || 0;
+        const facturaB = parseInt(b.facturaId, 10) || 0;
+
+        return facturaA - facturaB;
+    });
+
+    if (!filtradas.length) {
+        if (resumen) resumen.innerHTML = "";
+        if (lista) {
+            lista.innerHTML =
+                '<p style="text-align:center; padding:20px; color:#666;">No se encontraron facturas con esos filtros.</p>';
+        }
+        return;
+    }
+
+    renderizarReporteGanancias(filtradas);
+}
+
+
+function renderizarReporteGanancias(filas) {
+    const lista = document.getElementById("lista-ganancias");
+    const resumen = document.getElementById("resumen-ganancias");
+
+    if (!lista) return;
+
+    const totalVentas = filas.reduce((acc, f) => acc + (f.total || 0), 0);
+    const totalMO = filas.reduce((acc, f) => acc + (f.mo || 0), 0);
+    const totalMat = filas.reduce((acc, f) => acc + (f.materiales || 0), 0);
+    const totalEnvio = filas.reduce((acc, f) => acc + (f.envio || 0), 0);
+    const totalGanancia = filas.reduce((acc, f) => acc + (f.ganancia || 0), 0);
+
+    if (resumen) {
+        resumen.innerHTML = `
+            <span style="color:#6d4c41; font-size:0.9em; font-weight:bold;">GANANCIA TOTAL:</span><br>
+            <strong style="font-size:1.8em; color:#2e7d32;">
+                C$ ${totalGanancia.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            </strong>
+            <p style="margin:5px 0 0 0; font-size:0.8em; color:#8d6e63;">
+                ${filas.length} factura(s) encontradas
+            </p>
+        `;
+    }
+
+    lista.innerHTML = `
+        <div class="tabla-reporte-wrap">
+            <table class="tabla-reporte-ventas">
+                <thead>
+                    <tr style="background:#8d6e63; color:white;">
+                        <th>Fecha</th>
+                        <th>Factura N°</th>
+                        <th>Monto Total</th>
+                        <th>MO</th>
+                        <th>Materiales</th>
+                        <th>Envío</th>
+                        <th>Ganancia</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filas.map((fila) => {
+                        const fechaObj = excelSerialToDate(fila.fecha);
+                        const fechaFmt = `${String(fechaObj.getDate()).padStart(2, "0")}/${String(fechaObj.getMonth() + 1).padStart(2, "0")}/${fechaObj.getFullYear()}`;
+
+                        return `
+                            <tr>
+                                <td>${fechaFmt}</td>
+                                <td style="font-weight:bold;">${fila.facturaId}</td>
+                                <td>C$ ${fila.total.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                                <td>C$ ${fila.mo.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                                <td>C$ ${fila.materiales.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                                <td>C$ ${fila.envio.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                                <td style="color:#2e7d32; font-weight:bold;">
+                                    C$ ${fila.ganancia.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                                </td>
+                            </tr>
+                        `;
+                    }).join("")}
+                </tbody>
+                <tfoot>
+                    <tr style="font-weight:bold; background:#f7f2f8;">
+                        <td colspan="2">TOTAL</td>
+                        <td>C$ ${totalVentas.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                        <td>C$ ${totalMO.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                        <td>C$ ${totalMat.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                        <td>C$ ${totalEnvio.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                        <td style="color:#2e7d32;">C$ ${totalGanancia.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    `;
 }
 
 
@@ -2008,7 +2209,7 @@ function imprimirReporteVentas() {
 
                 .subtitulo {
                     margin-bottom: 18px;
-                    color: #666;
+                    color: #444;
                     font-size: 14px;
                 }
 
@@ -2064,6 +2265,70 @@ function imprimirReporteVentas() {
                 <strong>Origen:</strong> ${origen}
             </div>
 
+            ${contenido.innerHTML}
+        </body>
+        </html>
+    `);
+
+    ventana.document.close();
+    ventana.focus();
+    ventana.print();
+}
+
+
+function imprimirReporteGanancias() {
+    const contenido = document.getElementById("lista-ganancias");
+    const resumen = document.getElementById("resumen-ganancias");
+
+    if (!contenido || !contenido.innerHTML.trim()) {
+        return alert("No hay reporte cargado para imprimir.");
+    }
+
+    const periodo = document.getElementById("filtro-ganancia-periodo")?.value || "";
+    const origen = document.getElementById("filtro-ganancia-origen")?.value || "TODOS";
+
+    const ventana = window.open("", "_blank", "width=1100,height=800");
+
+    if (!ventana) {
+        alert("No se pudo abrir la ventana de impresión.");
+        return;
+    }
+
+    ventana.document.write(`
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <title>Reporte de Ganancias</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 24px; color: #333; }
+                h1 { margin: 0 0 8px 0; color: #5D4037; font-size: 24px; }
+                .subtitulo { margin-bottom: 18px; color: #666; font-size: 14px; }
+                .filtros {
+                    margin-bottom: 20px;
+                    padding: 12px 16px;
+                    background: #f7f2f8;
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    font-size: 14px;
+                }
+                table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+                th { background: #8d6e63; color: white; }
+                @media print { body { margin: 10mm; } }
+            </style>
+        </head>
+        <body>
+            <h1>Reporte de Ganancias</h1>
+            <div class="subtitulo">Oligar</div>
+
+            <div class="filtros">
+                <strong>Período:</strong> ${periodo || "N/A"} &nbsp;&nbsp;
+                <strong>Estado:</strong> Sin anuladas &nbsp;&nbsp;
+                <strong>Origen:</strong> ${origen}
+            </div>
+
+            ${resumen ? resumen.outerHTML : ""}
             ${contenido.innerHTML}
         </body>
         </html>

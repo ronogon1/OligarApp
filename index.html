@@ -773,12 +773,12 @@
                 </button>
 
                 <button
-                    onclick="imprimirReporteVentas()"
-                    class="btn-normal"
-                    type="button"
-                >
-                    🖨️ Imprimir
-                </button>
+                onclick="imprimirReporteVentas()"
+                class="btn-normal"
+                type="button"
+            >
+                🖨️ Imprimir
+            </button>
             </div>
 
             <div id="lista-facturas-reporte"></div>
@@ -790,7 +790,7 @@
     ========================================== -->
     <section
         id="seccion-pantalla-reporte-ganancias"
-        style="display: none; max-width: 600px; margin: auto;"
+        style="display: none; max-width: 1000px; margin: auto;"
     >
         <button
             onclick="navegar('menu-reportes')"
@@ -800,21 +800,54 @@
             ← Volver
         </button>
 
-        <div class="tarjeta" style="text-align: center;">
+        <div class="tarjeta">
             <h3>💸 Utilidad Neta Real</h3>
             <p>Ventas - Costos de Producción - Envíos</p>
 
-            <h1
-                id="total-ganancia-display"
-                style="color: var(--medium-jungle); font-size: 3em;"
-            >
-                C$ 0.00
-            </h1>
+            <div class="filtros-reporte-ventas">
+                <div>
+                    <label for="filtro-ganancia-periodo">Período</label>
+                    <input
+                        type="month"
+                        id="filtro-ganancia-periodo"
+                        style="width: 100%;"
+                    >
+                </div>
 
-            <hr>
-            <small>Basado en facturas con costos cargados.</small>
+                <div>
+                    <label for="filtro-ganancia-origen">Origen</label>
+                    <select
+                        id="filtro-ganancia-origen"
+                        style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc;"
+                    >
+                        <option value="TODOS">Todos</option>
+                        <option value="Crochet">Crochet</option>
+                        <option value="Creaciones">Creaciones</option>
+                    </select>
+                </div>
+
+                <button
+                    onclick="aplicarFiltrosReporteGanancias()"
+                    class="btn-enfoque"
+                    type="button"
+                >
+                    Filtrar
+                </button>
+
+                <button
+                    onclick="imprimirReporteGanancias()"
+                    class="btn-normal"
+                    type="button"
+                >
+                    🖨️ Imprimir
+                </button>
+            </div>
+
+            <div id="resumen-ganancias" class="resumen-reporte-ventas"></div>
+            <div id="lista-ganancias"></div>
         </div>
     </section>
+    
 
     <!-- ==========================================
          11. FORMULARIO CARGAR COSTOS

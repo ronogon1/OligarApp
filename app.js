@@ -1637,10 +1637,7 @@ async function abrirPantallaEnvio(idFactura) {
                 fila[0].toString() === idFactura.toString()
         );
 
-        const totalFactura = parseFloat(fC[5]) || 0;
-        const costosFactura = parseFloat(gC?.[5]) || 0;
-        const costoEnvio = parseFloat(gC?.[6]) || 0;
-        const gananciaActual = parseFloat(gC?.[7]) || 0;
+        const costoEnvio = parseFloat(gC?.[6]) || 0;        
 
         document.getElementById("envio_factura_id").value = fC[0] || "";
         document.getElementById("envio_cliente_nombre").value = nombreCliente;
@@ -1650,20 +1647,12 @@ async function abrirPantallaEnvio(idFactura) {
         document.getElementById("envio_total_factura").value =
             `C$ ${totalFactura.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
         document.getElementById("envio_origen_factura").value = fC[8] || "Crochet";
-
         document.getElementById("envio_cliente_id").value = cliente?.[0] || "";
         document.getElementById("envio_telefono").value = cliente?.[2] || "";
-
-        document.getElementById("envio_costos_factura").value =
-            `C$ ${costosFactura.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
         document.getElementById("envio_costo_envio").value = costoEnvio || 0;
-        document.getElementById("envio_ganancia_actual").value =
-            `C$ ${gananciaActual.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-        document.getElementById("envio_ganancia_proyectada").value =
-            `C$ ${(totalFactura - costosFactura - costoEnvio).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-
         document.getElementById("envio_direccion_destino").value = "1";
         document.getElementById("envio_direccion_texto").value = cliente?.[3] || "";
+        document.getElementById("envio_nota_cliente").value = cliente?.[6] || "";
 
         appState.facturaActual = {
             facturaId: fC[0],
@@ -1699,25 +1688,6 @@ if (selectDireccionEnvio) {
     });
 }
 
-const inputCostoEnvio = document.getElementById("envio_costo_envio");
-if (inputCostoEnvio) {
-    inputCostoEnvio.addEventListener("input", recalcularGananciaProyectadaEnvio);
-}
-
-function recalcularGananciaProyectadaEnvio() {
-    const totalTxt = document.getElementById("envio_total_factura")?.value || "0";
-    const costosTxt = document.getElementById("envio_costos_factura")?.value || "0";
-    const envio = parseFloat(document.getElementById("envio_costo_envio")?.value) || 0;
-
-    const total = parseFloat(totalTxt.replace(/[^\d.-]/g, "")) || 0;
-    const costos = parseFloat(costosTxt.replace(/[^\d.-]/g, "")) || 0;
-
-    const ganancia = total - costos - envio;
-
-    document.getElementById("envio_ganancia_proyectada").value =
-        `C$ ${ganancia.toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-}
-
 
 async function guardarProgramacionEnvio() {
     const facturaId = document.getElementById("envio_factura_id")?.value;
@@ -1726,6 +1696,7 @@ async function guardarProgramacionEnvio() {
     const destino = document.getElementById("envio_direccion_destino")?.value || "1";
     const direccion = document.getElementById("envio_direccion_texto")?.value || "";
     const costoEnvio = parseFloat(document.getElementById("envio_costo_envio")?.value) || 0;
+    const nota = document.getElementById("envio_nota_cliente")?.value || "";
 
     if (!facturaId) return alert("No hay factura seleccionada.");
     if (!clienteId) return alert("No se encontró el cliente.");
@@ -1753,7 +1724,8 @@ async function guardarProgramacionEnvio() {
         const clienteApiIndex = clienteIndex - 1;
 
         const cambiosCliente = [
-            { indiceRelativo: 2, valor: telefono }
+            { indiceRelativo: 2, valor: telefono },
+            { indiceRelativo: 6, valor: nota }
         ];
 
         if (destino === "1") {

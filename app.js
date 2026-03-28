@@ -1693,6 +1693,7 @@ async function irAReporteVentas() {
         if (fechaFinInput) fechaFinInput.value = ultimoDiaMes;
         if (estadoInput) estadoInput.value = "Cancelada";
         if (origenInput) origenInput.value = "TODOS";
+        if (estadoInput) estadoInput.value = "Sin Anuladas";
 
         aplicarFiltrosReporteVentas();
     } catch (error) {
@@ -1709,7 +1710,7 @@ function aplicarFiltrosReporteVentas() {
     const inicio = document.getElementById("filtro-fecha-inicio")?.value || "";
     const fin = document.getElementById("filtro-fecha-fin")?.value || "";
     const estadoSel =
-        document.getElementById("filtro-estado")?.value || "Cancelada";
+        document.getElementById("filtro-estado")?.value || "ABIERTAS";
     const origenSel =
         document.getElementById("filtro-origen")?.value || "TODOS";
 
@@ -1732,8 +1733,16 @@ function aplicarFiltrosReporteVentas() {
             (!inicio || fechaF >= inicio) &&
             (!fin || fechaF <= fin);
 
-        const cumpleEstado =
-            estadoSel === "TODAS" || estadoExcel === estadoSel;
+        let cumpleEstado = false;
+
+        if (estadoSel === "TODAS") {
+            cumpleEstado = true;
+        } else if (estadoSel === "Sin Anuladas") {
+            cumpleEstado =
+                estadoExcel === "Activa" || estadoExcel === "Cancelada";
+        } else {
+            cumpleEstado = estadoExcel === estadoSel;
+        }
 
         const cumpleOrigen =
             origenSel === "TODOS" || origenExcel === origenSel;

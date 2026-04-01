@@ -337,150 +337,6 @@ async function eliminarRegistrosPrevios(facturaID) {
 }
 
 
-async function sincronizarTCostosConTDetalle() {
-    try {
-        const token = await getAuthToken();
-
-        const detalle = await leerTabla(CONFIG.tablas.detalle);
-        const costos = await leerTabla(CONFIG.tablas.costos);
-
-        const filasDetalle = detalle.length - 1; // sin encabezado
-        const filasCostos = costos.length - 1;   // sin encabezado
-
-        const diferencia = filasDetalle - filasCostos;
-
-        if (diferencia <= 0) {
-            return;
-        }
-
-        // Encabezados de TCostos para ubicar columnas por nombre
-        const encabezadosCostos = costos[0] || [];
-        const idxMO = encabezadosCostos.indexOf("MO_Unitario");
-        const idxMateriales = encabezadosCostos.indexOf("Materiales_Unitario");
-
-        if (idxMO === -1 || idxMateriales === -1) {
-            throw new Error(
-                "No se encontraron las columnas MO_Unitario y/o Materiales_Unitario en TCostos."
-            );
-        }
-
-        // 1. Obtener el rango de la última fila real de TCostos
-        const ultimoIndiceCostos = filasCostos - 1; // itemAt usa índice sin encabezado
-
-        const urlUltimaFila =
-            `${GRAPH_BASE_URL}/workbook/tables/${CONFIG.tablas.costos}/rows/itemAt(index=${ultimoIndiceCostos})/range`;
-
-        const respUltimaFila = await fetch(urlUltimaFila, {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        });
-
-        if (!respUltimaFila.ok) {
-            throw new Error("No se pudo obtener la última fila de TCostos.");
-        }
-
-        const dataUltimaFila = await respUltimaFila.json();
-        const addressUltimaFila = dataUltimaFila.address; // Ej: Hoja1!A11:L11
-
-        // 2. Agregar filas vacías a TCostos para que la tabla crezca
-        const filasVacias = Array.from({ length: diferencia }, () =>
-            Array(encabezadosCostos.length).fill("")
-        );
-
-        const respAgregar = await fetch(
-            `${GRAPH_BASE_URL}/workbook/tables/${CONFIG.tablas.costos}/rows`,
-            {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    values: filasVacias
-                })
-            }
-        );
-
-        if (!respAgregar.ok) {
-            throw new Error("No se pudieron agregar filas nuevas a TCostos.");
-        }
-
-        // 3. Leer de nuevo TCostos para ubicar las nuevas filas
-        const costosActualizado = await leerTabla(CONFIG.tablas.costos);
-        const nuevasFilasTotales = costosActualizado.length - 1;
-
-        // Índice inicial de las nuevas filas dentro de la tabla (sin encabezado)
-        const primerNuevoIndice = filasCostos;
-
-        for (let i = 0; i < diferencia; i++) {
-            const apiIndex = primerNuevoIndice + i;
-
-            // Obtener address de la fila nueva
-            const urlFilaNueva =
-                `${GRAPH_BASE_URL}/workbook/tables/${CONFIG.tablas.costos}/rows/itemAt(index=${apiIndex})/range`;
-
-            const respFilaNueva = await fetch(urlFilaNueva, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-
-            if (!respFilaNueva.ok) {
-                throw new Error(`No se pudo obtener la nueva fila ${apiIndex} de TCostos.`);
-            }
-
-            const dataFilaNueva = await respFilaNueva.json();
-            const addressFilaNueva = dataFilaNueva.address;
-
-            const [sheetPart] = addressFilaNueva.split("!");
-            const sheetName = sheetPart.replace(/^'/, "").replace(/'$/, "");
-
-            const rangoDestino = addressFilaNueva.split("!")[1];
-            const rangoOrigen = addressUltimaFila.split("!")[1];
-
-            // 4. Copiar la última fila existente sobre la fila nueva
-            const copyUrl =
-                `${GRAPH_BASE_URL}/workbook/worksheets('${sheetName}')/range(address='${rangoDestino}')/copyFrom`;
-
-            const respCopy = await fetch(copyUrl, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    sourceRange: `${sheetName}!${rangoOrigen}`,
-                    copyType: "all",
-                    skipBlanks: false,
-                    transpose: false
-                })
-            });
-
-            if (!respCopy.ok) {
-                throw new Error(`No se pudo copiar la fila base a la nueva fila ${apiIndex}.`);
-            }
-
-            // 5. Limpiar SOLO MO_Unitario y Materiales_Unitario
-            await actualizarCeldasEspecificasTabla(
-                CONFIG.tablas.costos,
-                apiIndex,
-                [
-                    { indiceRelativo: idxMO, valor: "" },
-                    { indiceRelativo: idxMateriales, valor: "" }
-                ],
-                token
-            );
-        }
-
-        console.log(`TCostos sincronizada. Filas agregadas: ${diferencia}`);
-    } catch (error) {
-        console.error("Error al sincronizar TCostos con TDetalle:", error);
-        throw error;
-    }
-}
-
-
 // ==========================================
 // 8. CLIENTES
 // ==========================================
@@ -831,6 +687,9 @@ if (formVentas) {
 
             await escribirFilas(CONFIG.tablas.detalle, filasDetalle);
 
+            const filasCostos = filasDetalle.map((fila) => [fila[1]]);
+            await escribirFilas(CONFIG.tablas.costos, filasCostos);
+
             if (filasAnticipos.length > 0) {
                 await escribirFilas(CONFIG.tablas.anticipos, filasAnticipos);
             }
@@ -846,10 +705,6 @@ if (formVentas) {
                 totalPagado,
                 appState.origenActual || "Crochet"
             ]]);
-
-            await leerExcel();
-            await sincronizarTCostosConTDetalle();
-            //await sincronizarTGananciaconTFacturas();
 
             limpiarYRegresar();
             setMensaje("Procesando...");

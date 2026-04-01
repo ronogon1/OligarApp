@@ -831,8 +831,6 @@ if (formVentas) {
 
             await escribirFilas(CONFIG.tablas.detalle, filasDetalle);
 
-            await sincronizarTCostosConTDetalle();
-
             if (filasAnticipos.length > 0) {
                 await escribirFilas(CONFIG.tablas.anticipos, filasAnticipos);
             }
@@ -848,6 +846,10 @@ if (formVentas) {
                 totalPagado,
                 appState.origenActual || "Crochet"
             ]]);
+
+            await leerExcel();
+            await sincronizarTCostosConTDetalle();
+            //await sincronizarTGananciaconTFacturas();
 
             limpiarYRegresar();
             setMensaje("Procesando...");

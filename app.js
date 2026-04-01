@@ -687,11 +687,20 @@ if (formVentas) {
 
             await escribirFilas(CONFIG.tablas.detalle, filasDetalle);
 
-            const filasCostos = filasDetalle.map(fila => ({
-                Producto: fila[1],
-                MO_Unitario: "",
-                Materiales_Unitario:""
-            }));
+            const filasCostos = filasDetalle.map(fila => [
+                fila[1], //Producto
+                "=TDetalle[@[Factura_ID]]",
+                "=BUSCARX([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Fecha])",
+                "=BUSCARX([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Estado])",
+                "=TDetalle[@Cantidad]",
+                "=TDetalle[@Subtotal]",
+                "", // MO_Unitario
+                "", // Materiales_Unitario
+                "=SUMA(TCostos[@[MO_Unitario]:[Materiales_Unitario]])",
+                "=[@[Costo_Unitario]]*[@Cantidad]",
+                "=[@[Ganancia_Producto]]/[@Cantidad]",
+                "=[@[Subtotal_Venta]]-[@[Subtotal_Costo]]"
+            ]);
 
             await escribirFilas(CONFIG.tablas.costos, filasCostos);
 

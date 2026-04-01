@@ -690,13 +690,13 @@ if (formVentas) {
             const filasCostos = filasDetalle.map(fila => [
                 fila[1], //Producto
                 "=TDetalle[@[Factura_ID]]",
-                "=BUSCARX([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Fecha])",
-                "=BUSCARX([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Estado])",
+                "=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Fecha])",
+                "=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Estado])",
                 "=TDetalle[@Cantidad]",
                 "=TDetalle[@Subtotal]",
-                "", // MO_Unitario
-                "", // Materiales_Unitario
-                "=SUMA(TCostos[@[MO_Unitario]:[Materiales_Unitario]])",
+                "", // MO_Unitario (editable)
+                "", // Materiales_Unitario (editable)
+                "=SUM(TCostos[@[MO_Unitario]:[Materiales_Unitario]])",
                 "=[@[Costo_Unitario]]*[@Cantidad]",
                 "=[@[Ganancia_Producto]]/[@Cantidad]",
                 "=[@[Subtotal_Venta]]-[@[Subtotal_Costo]]"

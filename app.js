@@ -2158,6 +2158,8 @@ async function mostrarReporteGanancias() {
     }
 
     try {
+        mostrarOverlayCarga("Cargando reporte de ganancias...");
+        
         const datos = await leerExcel();
 
         const facturas = datos[CONFIG.tablas.facturas] || [];
@@ -2250,6 +2252,8 @@ async function mostrarReporteGanancias() {
         if (lista) {
             lista.innerHTML = `<p style='color:red; text-align:center;'>❌ Error: ${error.message}</p>`;
         }
+    } finally {
+        ocultarOverlayCarga();
     }
 }
 

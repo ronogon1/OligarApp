@@ -687,14 +687,13 @@ if (formVentas) {
 
             await escribirFilas(CONFIG.tablas.detalle, filasDetalle);
 
-            const filasCostos = [];
-            for (const fila of filasDetalle) {
-                filasCostos.push([fila[1]]);
-            }
+            const filasCostos = filasDetalle.map(fila => ({
+                Producto: fila[1],
+                MO_Unitario: "",
+                Materiales_Unitario:""
+            }));
 
-            if (filasCostos.length > 0) {
-                await escribirFilas(CONFIG.tablas.costos, filasCostos);
-            }
+            await escribirFilas(CONFIG.tablas.costos, filasCostos);
 
             if (filasAnticipos.length > 0) {
                 await escribirFilas(CONFIG.tablas.anticipos, filasAnticipos);

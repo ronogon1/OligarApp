@@ -692,6 +692,10 @@ if (formVentas) {
                 filasCostos.push([fila[1]]);
             }
 
+            if (filasCostos.length > 0) {
+                await escribirFilas(CONFIG.tablas.costos, filasCostos);
+            }
+
             if (filasAnticipos.length > 0) {
                 await escribirFilas(CONFIG.tablas.anticipos, filasAnticipos);
             }
@@ -730,6 +734,7 @@ if (formVentas) {
         }
     };
 }
+
 
 // ==========================================
 // 12. CONSULTAS Y TABLAS

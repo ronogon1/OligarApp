@@ -704,6 +704,19 @@ if (formVentas) {
 
             await escribirFilas(CONFIG.tablas.costos, filasCostos);
 
+            const filasGanancias = facturasProcesadas.map(f =[
+                "=TFacturas[@[Factura_ID]]",
+                "=TFacturas[@Fecha]",
+                "=TFacturas[@Cliente]",
+                "=TFacturas[@[Total_Factura]]",
+                "=TFacturas[@Estado]",
+                "=SUMIFS(TCostos[Subtotal_Costo],TCostos[Factura_ID],[@[Factura_ID]])",
+                "", // Costo_Envío (editable)
+                "=[@[Total_Factura]]-[@[Costos_Factura]]-[@[Costo_Envío]]"
+            ]);
+
+            await escribirFilas(CONFIG.tablas.ganancia, filasGanancias);
+
             if (filasAnticipos.length > 0) {
                 await escribirFilas(CONFIG.tablas.anticipos, filasAnticipos);
             }

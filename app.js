@@ -462,7 +462,7 @@ function agregarFilaAnticipo(datos = null) {
     const div = document.createElement("div");
     div.className = "fila-anticipo";
 
-    const hoy = new Date().toISOString().split("T")[0];
+    const hoy = hoyLocalInputDate();
     const fecha = datos?.fecha || hoy;
     const monto = datos?.monto || "";
     const nota = datos?.nota || "";
@@ -1168,7 +1168,7 @@ async function previsualizarFactura(idParam) {
         const preOrigen = document.getElementById("pre_origen");
 
         if (preCliente) preCliente.value = fC[2];
-        if (preFecha) preFecha.value = excelSerialToDate(fC[1]).toLocaleDateString();
+        if (preFecha) preFecha.value = formatFechaDesdeExcel(fC[1]);
 
         const totalFactura = parseFloat(fC[5]) || 0;
         const totalPagado = parseFloat(fC[7]) || 0;
@@ -1385,9 +1385,7 @@ async function cargarFacturaParaEditar(idFactura) {
 
         if (inputCliente) inputCliente.value = fC[2];
         if (inputFecha) {
-            inputFecha.value = excelSerialToDate(fC[1])
-                .toISOString()
-                .split("T")[0];
+            inputFecha.value = formatFechaInputDesdeExcel(fC[1]);
         }
         if (inputEnvio) inputEnvio.value = fC[3];
         if (inputDescG) inputDescG.value = fC[4];
@@ -1416,9 +1414,7 @@ async function cargarFacturaParaEditar(idFactura) {
 
             pagosRegistrados.forEach((pago) => {
                 agregarFilaAnticipo({
-                    fecha: excelSerialToDate(pago[3])
-                        .toISOString()
-                        .split("T")[0],
+                    fecha: formatFechaInputDesdeExcel(pago[3]),
                     monto: pago[4],
                     nota: pago[5]
                 });
@@ -1861,29 +1857,72 @@ function limpiarYRegresar() {
     navegar("menu");
 }
 
+const EXCEL_EPOCH_UTC = Date.UTC(1899, 11, 30);
+const MS_PER_DAY = 86400000;
+
 function excelSerialToDate(serial) {
-    const excelEpoch = new Date(1899, 11, 30);
-    return new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
+    if (!serial || isNaN(serial)) return null;
+    return new Date(EXCEL_EPOCH_UTC + Number(serial) * MS_PER_DAY);
 }
 
 function formatFechaDDMMYYYY(date) {
-    const dd = String(date.getDate()).padStart(2, "0");
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const yyyy = date.getFullYear();
+    if (!date) return "";
+
+    const dd = String(date.getUTCDate()).padStart(2, "0");
+    const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const yyyy = date.getUTCFullYear();
+
     return `${dd}/${mm}/${yyyy}`;
+}
+
+function formatFechaInput(date) {
+    if (!date) return "";
+
+    const yyyy = date.getUTCFullYear();
+    const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(date.getUTCDate()).padStart(2, "0");
+
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatFechaDesdeExcel(serial) {
+    return formatFechaDDMMYYYY(excelSerialToDate(serial));
+}
+
+function formatFechaInputDesdeExcel(serial) {
+    return formatFechaInput(excelSerialToDate(serial));
+}
+
+function hoyLocalInputDate() {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+
+    return `${yyyy}-${mm}-${dd}`;
 }
 
 function obtenerFechaComparar(serial) {
     if (!serial || isNaN(serial)) return "";
 
-    const excelEpoch = new Date(1899, 11, 30);
-    const date = new Date(excelEpoch.getTime() + serial * 24 * 60 * 60 * 1000);
+    const date = excelSerialToDate(serial);
 
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const dd = String(date.getDate()).padStart(2, "0");
+    const yyyy = date.getUTCFullYear();
+    const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const dd = String(date.getUTCDate()).padStart(2, "0");
 
     return `${yyyy}-${mm}-${dd}`;
+}
+
+function obtenerRangoMesActualInput() {
+    const now = new Date();
+    const inicio = new Date(now.getFullYear(), now.getMonth(), 1);
+    const fin = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    return {
+        inicio: formatFechaInput(inicio),
+        fin: formatFechaInput(fin)
+    };
 }
 
 // ==========================================
@@ -1919,17 +1958,9 @@ async function irAReporteVentas() {
         const origenInput = document.getElementById("filtro-origen");
 
         const hoy = new Date();
-        const primerDiaMes = new Date(
-            hoy.getFullYear(),
-            hoy.getMonth(),
-            1
-        ).toISOString().split("T")[0];
-
-        const ultimoDiaMes = new Date(
-            hoy.getFullYear(),
-            hoy.getMonth() + 1,
-            0
-        ).toISOString().split("T")[0];
+        const rangoMesActual = obtenerRangoMesActualInput();
+        const primerDiaMes = rangoMesActual.inicio;
+        const ultimoDiaMes = rangoMesActual.fin;
 
         if (fechaInicioInput) fechaInicioInput.value = primerDiaMes;
         if (fechaFinInput) fechaFinInput.value = ultimoDiaMes;
@@ -2055,8 +2086,7 @@ function renderizarReporteVentas(filas) {
                 </thead>
                 <tbody>
                     ${filas.map((fila) => {
-                        const fechaObj = excelSerialToDate(fila[1]);
-                        const fechaFmt = `${String(fechaObj.getDate()).padStart(2, "0")}/${String(fechaObj.getMonth() + 1).padStart(2, "0")}/${fechaObj.getFullYear()}`;
+                        const fechaFmt = formatFechaDesdeExcel(fila[1]);
 
                         const envio = parseFloat(fila[3] || 0);
                         const desc = parseFloat(fila[4] || 0);
@@ -2313,8 +2343,7 @@ function renderizarReporteGanancias(filas) {
                 </thead>
                 <tbody>
                     ${filas.map((fila) => {
-                        const fechaObj = excelSerialToDate(fila.fecha);
-                        const fechaFmt = `${String(fechaObj.getDate()).padStart(2, "0")}/${String(fechaObj.getMonth() + 1).padStart(2, "0")}/${fechaObj.getFullYear()}`;
+                        const fechaFmt = formatFechaDesdeExcel(fila.fecha);
 
                         return `
                             <tr>

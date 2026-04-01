@@ -1939,6 +1939,8 @@ async function irAReporteVentas() {
     }
 
     try {
+        mostrarOverlayCarga("Cargando reporte de ventas...");
+        
         const datos = await leerExcel();
         const facturas = datos[CONFIG.tablas.facturas] || [];
 
@@ -1975,6 +1977,8 @@ async function irAReporteVentas() {
             contenedor.innerHTML =
                 `<p style='color:red; text-align:center;'>❌ Error: ${error.message}</p>`;
         }
+    } finally {
+        ocultarOverlayCarga();
     }
 }
 

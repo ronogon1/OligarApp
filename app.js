@@ -365,6 +365,7 @@ async function asegurarRegistroCliente(nombreCliente) {
     const nombreNormalizado = nombreCliente.trim().toLowerCase();
     const valores = await leerTabla(CONFIG.tablas.clientes);
 
+    // 🔎 Validar si ya existe
     const existe = valores.some((fila, index) => {
         if (index === 0) return false;
         return (
@@ -377,7 +378,23 @@ async function asegurarRegistroCliente(nombreCliente) {
         return;
     }
 
-    const nuevoId = `C-${Date.now().toString().slice(-6)}`;
+    // 🧠 Generar ID consecutivo
+    let maxId = 0;
+
+    valores.forEach((fila, index) => {
+        if (index === 0) return;
+
+        const id = fila[0];
+        if (typeof id === "string" && id.startsWith("C")) {
+            const numero = parseInt(id.substring(1)) || 0;
+            if (numero > maxId) maxId = numero;
+        }
+    });
+
+    const nuevoNumero = maxId + 1;
+    const nuevoId = `C${nuevoNumero.toString().padStart(4, "0")}`;
+
+    // 📝 Crear fila
     const nuevaFila = [
         nuevoId,
         nombreCliente.trim(),
@@ -392,7 +409,7 @@ async function asegurarRegistroCliente(nombreCliente) {
 
     if (ok) {
         await actualizarMemoriaClientes();
-        console.log(`Cliente nuevo registrado: ${nombreCliente}`);
+        console.log(`Cliente nuevo registrado: ${nombreCliente} (${nuevoId})`);
     }
 }
 

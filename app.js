@@ -294,37 +294,38 @@ async function escribirFilas(nombreTabla, filas) {
 
 async function eliminarRegistrosPrevios(facturaID) {
     const token = await getAuthToken();
-    const tablas = [
-        CONFIG.tablas.facturas,
-        CONFIG.tablas.detalle,
-        CONFIG.tablas.anticipos
+
+    const configTablas = [
+        { nombre: CONFIG.tablas.facturas, indiceColumnaId: 0 },
+        { nombre: CONFIG.tablas.detalle, indiceColumnaId: 0 },
+        { nombre: CONFIG.tablas.anticipos, indiceColumnaId: 1 },
+        { nombre: CONFIG.tablas.costos, indiceColumnaId: 1 },
+        { nombre: CONFIG.tablas.ganancia, indiceColumnaId: 0 }
     ];
 
-    for (const nombreTabla of tablas) {
-        const valores = await leerTabla(nombreTabla);
+    for (const tabla of configTablas) {
+        const valores = await leerTabla(tabla.nombre);
 
         if (!valores || valores.length <= 1) {
             continue;
         }
 
-        const indiceColumnaId =
-            nombreTabla === CONFIG.tablas.anticipos ? 1 : 0;
-
         const filasAEliminar = valores
             .slice(1)
             .map((fila, index) => ({
-                id: fila[indiceColumnaId],
+                id: fila[tabla.indiceColumnaId],
                 index
             }))
             .filter(
                 (item) =>
-                    item.id && item.id.toString() === facturaID.toString()
+                    item.id &&
+                    item.id.toString() === facturaID.toString()
             )
             .reverse();
 
         for (const fila of filasAEliminar) {
             await fetch(
-                `${GRAPH_BASE_URL}/workbook/tables/${nombreTabla}/rows/itemAt(index=${fila.index})`,
+                `${GRAPH_BASE_URL}/workbook/tables/${tabla.nombre}/rows/itemAt(index=${fila.index})`,
                 {
                     method: "DELETE",
                     headers: {

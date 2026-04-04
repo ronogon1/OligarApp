@@ -398,7 +398,8 @@ async function eliminarCostosFactura(facturaID) {
             .slice(1)
             .map((fila, i) => ({
                 id: fila[1],
-                index: i
+                index: i,
+                producto: fila[0]
             }))
             .filter(
                 (f) =>
@@ -407,29 +408,54 @@ async function eliminarCostosFactura(facturaID) {
             )
             .reverse();
 
+        console.log("[TCostos] intento:", intento);
+        console.log("[TCostos] filas encontradas para eliminar:", filas);
+
         if (!filas.length) {
             return;
         }
 
         for (const f of filas) {
-            const resp = await fetch(
-                `${GRAPH_BASE_URL}/workbook/tables/${CONFIG.tablas.costos}/rows/itemAt(index=${f.index})`,
-                {
-                    method: "DELETE",
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
+            const url =
+                `${GRAPH_BASE_URL}/workbook/tables/${CONFIG.tablas.costos}` +
+                `/rows/itemAt(index=${f.index})`;
+
+            const resp = await fetch(url, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`
                 }
+            });
+
+            let detalle = "";
+            try {
+                detalle = await resp.text();
+            } catch (e) {
+                detalle = "(sin detalle)";
+            }
+
+            console.log(
+                "[TCostos] DELETE fila:",
+                f.index,
+                "| producto:",
+                f.producto,
+                "| ok:",
+                resp.ok,
+                "| status:",
+                resp.status,
+                "| detalle:",
+                detalle
             );
 
             if (!resp.ok) {
                 throw new Error(
-                    `No se pudo eliminar TCostos para la factura ${facturaID}.`
+                    `No se pudo eliminar TCostos para la factura ${facturaID}. ` +
+                    `Status: ${resp.status}. Detalle: ${detalle}`
                 );
             }
         }
 
-        await esperar(400);
+        await esperar(500);
 
         const verificacion = await leerTabla(CONFIG.tablas.costos);
         const quedan = verificacion
@@ -439,6 +465,8 @@ async function eliminarCostosFactura(facturaID) {
                     fila[1] &&
                     fila[1].toString() === facturaID.toString()
             );
+
+        console.log("[TCostos] quedan filas después de borrar:", quedan);
 
         if (!quedan) {
             return;

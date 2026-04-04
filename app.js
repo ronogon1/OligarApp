@@ -324,7 +324,7 @@ async function eliminarRegistrosPrevios(facturaID) {
             .reverse();
 
         for (const fila of filasAEliminar) {
-            await fetch(
+            const resp = await fetch(
                 `${GRAPH_BASE_URL}/workbook/tables/${tabla.nombre}/rows/itemAt(index=${fila.index})`,
                 {
                     method: "DELETE",
@@ -333,6 +333,12 @@ async function eliminarRegistrosPrevios(facturaID) {
                     }
                 }
             );
+
+            if (!resp.ok) {
+                throw new Error(
+                    `No se pudo eliminar la fila previa en ${tabla.nombre} para la factura ${facturaID}.`
+                );
+            }
         }
     }
 }
@@ -575,13 +581,18 @@ if (formVentas) {
 
         const esEdicion = form.dataset.modo === "edit";
         let facturaID = form.dataset.idFactura;
-        const clienteNombre = document.getElementById("v_cliente")?.value?.trim() || "";
+        const clienteNombre =
+            document.getElementById("v_cliente")?.value?.trim() || "";
 
-        setMensaje(esEdicion ? "Actualizando factura..." : "Guardando venta...");
+        setMensaje(
+            esEdicion ? "Actualizando factura..." : "Guardando venta..."
+        );
 
         try {
             mostrarOverlayCarga(
-                esEdicion ? "Actualizando factura..." : "Guardando venta..."
+                esEdicion
+                    ? "Actualizando factura..."
+                    : "Guardando venta..."
             );
 
             const token = await getAuthToken();
@@ -590,10 +601,13 @@ if (formVentas) {
 
             const clienteEncontrado = appState.clientes.find((cliente) =>
                 cliente.nombre &&
-                cliente.nombre.toString().trim().toLowerCase() === clienteNombre.toLowerCase()
+                cliente.nombre.toString().trim().toLowerCase() ===
+                    clienteNombre.toLowerCase()
             );
 
-            const clienteIDFinal = clienteEncontrado ? clienteEncontrado.id : "C-NUEVO";
+            const clienteIDFinal = clienteEncontrado
+                ? clienteEncontrado.id
+                : "C-NUEVO";
 
             if (esEdicion) {
                 await eliminarRegistrosPrevios(facturaID);
@@ -605,15 +619,20 @@ if (formVentas) {
                 if (facturas.length > 1) {
                     const ids = facturas
                         .slice(1)
-                        .map((fila) => parseInt(fila[0]?.toString().substring(4)) || 0);
+                        .map((fila) =>
+                            parseInt(fila[0]?.toString().substring(4)) || 0
+                        );
 
                     proxId = Math.max(...ids) + 1;
                 }
 
-                facturaID = `${new Date().getFullYear()}${proxId.toString().padStart(4, "0")}`;
+                facturaID =
+                    `${new Date().getFullYear()}` +
+                    `${proxId.toString().padStart(4, "0")}`;
             }
 
             const filasProductoDOM = document.querySelectorAll(".fila-producto");
+
             if (!filasProductoDOM.length) {
                 throw new Error("Debes agregar al menos un producto.");
             }
@@ -622,13 +641,19 @@ if (formVentas) {
             let sumaSubtotales = 0;
 
             for (const fila of filasProductoDOM) {
-                const nombre = fila.querySelector(".p_nombre")?.value?.trim() || "";
-                const cant = parseInt(fila.querySelector(".p_cantidad")?.value) || 0;
-                const precio = parseFloat(fila.querySelector(".p_precio")?.value) || 0;
-                const desc = parseFloat(fila.querySelector(".p_descuento")?.value) || 0;
+                const nombre =
+                    fila.querySelector(".p_nombre")?.value?.trim() || "";
+                const cant =
+                    parseInt(fila.querySelector(".p_cantidad")?.value) || 0;
+                const precio =
+                    parseFloat(fila.querySelector(".p_precio")?.value) || 0;
+                const desc =
+                    parseFloat(fila.querySelector(".p_descuento")?.value) || 0;
 
                 if (!nombre || cant <= 0 || precio <= 0) {
-                    throw new Error("Hay productos incompletos o inválidos.");
+                    throw new Error(
+                        "Hay productos incompletos o inválidos."
+                    );
                 }
 
                 const subtotal = (cant * precio) - desc;
@@ -637,10 +662,12 @@ if (formVentas) {
                 const archivo = fila.querySelector(".p_imagen")?.files?.[0];
 
                 if (archivo) {
-                    const nombreImg = `${facturaID}_${nombre.replace(/\s+/g, "_")}.jpg`;
+                    const nombreImg =
+                        `${facturaID}_${nombre.replace(/\s+/g, "_")}.jpg`;
 
                     const uploadUrl =
-                        `https://graph.microsoft.com/v1.0/drives/${CONFIG.graph.driveId}/items/${CONFIG.graph.productosFolderId}:/${nombreImg}:/content`;
+                        `https://graph.microsoft.com/v1.0/drives/${CONFIG.graph.driveId}` +
+                        `/items/${CONFIG.graph.productosFolderId}:/${nombreImg}:/content`;
 
                     const respUpload = await fetch(uploadUrl, {
                         method: "PUT",
@@ -651,7 +678,9 @@ if (formVentas) {
                     });
 
                     if (!respUpload.ok) {
-                        throw new Error(`No se pudo subir la imagen de ${nombre}.`);
+                        throw new Error(
+                            `No se pudo subir la imagen de ${nombre}.`
+                        );
                     }
 
                     const dataUpload = await respUpload.json();
@@ -674,12 +703,15 @@ if (formVentas) {
             const filasAnticipos = [];
             let totalPagado = 0;
 
-            const filasAnticipoDOM = document.querySelectorAll(".fila-anticipo");
+            const filasAnticipoDOM =
+                document.querySelectorAll(".fila-anticipo");
 
             filasAnticipoDOM.forEach((fila, index) => {
                 const fechaA = fila.querySelector(".a_fecha")?.value || "";
-                const montoA = parseFloat(fila.querySelector(".a_monto")?.value) || 0;
-                const notaA = fila.querySelector(".a_comentario")?.value || "";
+                const montoA =
+                    parseFloat(fila.querySelector(".a_monto")?.value) || 0;
+                const notaA =
+                    fila.querySelector(".a_comentario")?.value || "";
                 const anticipoID = `ANT-${facturaID}-${index + 1}`;
 
                 if (fechaA && montoA > 0) {
@@ -696,37 +728,20 @@ if (formVentas) {
                 }
             });
 
-            const envio = parseFloat(document.getElementById("v_envio")?.value) || 0;
-            const descG = parseFloat(document.getElementById("v_desc_global")?.value) || 0;
+            const envio =
+                parseFloat(document.getElementById("v_envio")?.value) || 0;
+            const descG =
+                parseFloat(
+                    document.getElementById("v_desc_global")?.value
+                ) || 0;
             const totalF = sumaSubtotales + envio - descG;
 
             const estadoFinal =
-                totalPagado >= totalF && totalF > 0 ? "Cancelada" : "Activa";
+                totalPagado >= totalF && totalF > 0
+                    ? "Cancelada"
+                    : "Activa";
 
-            await escribirFilas(CONFIG.tablas.detalle, filasDetalle);
-
-            const filasCostos = filasDetalle.map(fila => [
-                fila[1], //Producto
-                "=TDetalle[@[Factura_ID]]",
-                "=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Fecha])",
-                "=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Estado])",
-                "=TDetalle[@Cantidad]",
-                "=TDetalle[@Subtotal]",
-                "", // MO_Unitario (editable)
-                "", // Materiales_Unitario (editable)
-                "=SUM(TCostos[@[MO_Unitario]:[Materiales_Unitario]])",
-                "=[@[Costo_Unitario]]*[@Cantidad]",
-                "=[@[Ganancia_Producto]]/[@Cantidad]",
-                "=[@[Subtotal_Venta]]-[@[Subtotal_Costo]]"
-            ]);
-
-            await escribirFilas(CONFIG.tablas.costos, filasCostos);
-
-            if (filasAnticipos.length > 0) {
-                await escribirFilas(CONFIG.tablas.anticipos, filasAnticipos);
-            }
-
-            await escribirFilas(CONFIG.tablas.facturas, [[
+            const filaFactura = [[
                 facturaID,
                 document.getElementById("v_fecha")?.value || "",
                 clienteNombre,
@@ -736,7 +751,22 @@ if (formVentas) {
                 estadoFinal,
                 totalPagado,
                 appState.origenActual || "Crochet"
-            ]]);
+            ]];
+
+            const filasCostos = filasDetalle.map((fila) => [
+                fila[1],
+                "=TDetalle[@[Factura_ID]]",
+                "=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Fecha])",
+                "=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Estado])",
+                "=TDetalle[@Cantidad]",
+                "=TDetalle[@Subtotal]",
+                "",
+                "",
+                "=SUM(TCostos[@[MO_Unitario]:[Materiales_Unitario]])",
+                "=[@[Costo_Unitario]]*[@Cantidad]",
+                "=[@[Ganancia_Producto]]/[@Cantidad]",
+                "=[@[Subtotal_Venta]]-[@[Subtotal_Costo]]"
+            ]);
 
             const filasGanancias = [[
                 facturaID,
@@ -745,9 +775,20 @@ if (formVentas) {
                 totalF,
                 estadoFinal,
                 '=SUMIFS(TCostos[Subtotal_Costo],TCostos[Factura_ID],[@[Factura_ID]])',
-                "", // Costo_Envio 
+                "",
                 '=[@[Total_Factura]]-[@[Costos_Factura]]-[@[Costo_Envío]]'
             ]];
+
+            await escribirFilas(CONFIG.tablas.facturas, filaFactura);
+            await escribirFilas(CONFIG.tablas.detalle, filasDetalle);
+            await escribirFilas(CONFIG.tablas.costos, filasCostos);
+
+            if (filasAnticipos.length > 0) {
+                await escribirFilas(
+                    CONFIG.tablas.anticipos,
+                    filasAnticipos
+                );
+            }
 
             await escribirFilas(CONFIG.tablas.ganancia, filasGanancias);
 
@@ -762,7 +803,6 @@ if (formVentas) {
                 await leerExcel();
                 setMensaje("Listo.");
             }, 1200);
-
         } catch (error) {
             console.error(error);
             alert("Error al guardar: " + error.message);

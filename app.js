@@ -753,8 +753,8 @@ if (formVentas) {
                     facturaID
                 );
 
-                await eliminarRegistrosPrevios(facturaID);
                 await eliminarCostosFactura(facturaID);
+                await eliminarRegistrosPrevios(facturaID);
             } else {
                 const facturas = await leerTabla(CONFIG.tablas.facturas);
 

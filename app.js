@@ -342,26 +342,24 @@ async function eliminarRegistrosPrevios(facturaID) {
 
 
 function construirCostosDesdeDetalle(filasDetalle, costosPrevios) {
-    const contador = {};
-
     return filasDetalle.map((fila, index) => {
         const producto = fila[1];
-
-        contador[producto] = (contador[producto] || 0) + 1;
-
         const clave = `${producto}__${index}`;
         const previo = costosPrevios[clave] || {};
 
         return [
             producto,
-            fila[0], // Factura_ID REAL (NO fórmula)
-            "", // Fecha (puedes dejar fórmula si quieres)
-            "", // Estado
-            fila[2], // Cantidad
-            fila[5], // Subtotal
+            fila[0],
+            '=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Fecha])',
+            '=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Estado])',
+            '=TDetalle[@Cantidad]',
+            '=TDetalle[@Subtotal]',
             previo.mo || "",
             previo.mat || "",
-            "", "", "", ""
+            '=SUM([@[MO_Unitario]:[Materiales_Unitario]])',
+            '=[@[Costo_Unitario]]*[@Cantidad]',
+            '=[@[Ganancia_Producto]]/[@Cantidad]',
+            '=[@[Subtotal_Venta]]-[@[Subtotal_Costo]]'
         ];
     });
 }

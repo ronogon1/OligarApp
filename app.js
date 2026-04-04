@@ -384,30 +384,73 @@ function obtenerCostosPreviosFactura(costosTabla, facturaID) {
     return mapa;
 }
 
-async function eliminarCostosFactura(facturaID) {
-    const token = await getAuthToken();
-    const valores = await leerTabla(CONFIG.tablas.costos);
-
-    const filas = valores
-        .slice(1)
-        .map((fila, i) => ({
-            id: fila[1],
-            index: i
-        }))
-        .filter(f => f.id && f.id.toString() === facturaID.toString())
-        .reverse();
-
-    for (const f of filas) {
-        await fetch(
-            `${GRAPH_BASE_URL}/workbook/tables/${CONFIG.tablas.costos}/rows/itemAt(index=${f.index})`,
-            {
-                method: "DELETE",
-                headers: { Authorization: `Bearer ${token}` }
-            }
-        );
-    }
+function esperar(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function eliminarCostosFactura(facturaID) {
+    const token = await getAuthToken();
+
+    for (let intento = 1; intento <= 3; intento++) {
+        const valores = await leerTabla(CONFIG.tablas.costos);
+
+        const filas = valores
+            .slice(1)
+            .map((fila, i) => ({
+                id: fila[1],
+                index: i
+            }))
+            .filter(
+                (f) =>
+                    f.id &&
+                    f.id.toString() === facturaID.toString()
+            )
+            .reverse();
+
+        if (!filas.length) {
+            return;
+        }
+
+        for (const f of filas) {
+            const resp = await fetch(
+                `${GRAPH_BASE_URL}/workbook/tables/${CONFIG.tablas.costos}/rows/itemAt(index=${f.index})`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                }
+            );
+
+            if (!resp.ok) {
+                throw new Error(
+                    `No se pudo eliminar TCostos para la factura ${facturaID}.`
+                );
+            }
+        }
+
+        await esperar(400);
+
+        const verificacion = await leerTabla(CONFIG.tablas.costos);
+        const quedan = verificacion
+            .slice(1)
+            .some(
+                (fila) =>
+                    fila[1] &&
+                    fila[1].toString() === facturaID.toString()
+            );
+
+        if (!quedan) {
+            return;
+        }
+    }
+
+    throw new Error(
+        `Persisten filas en TCostos para la factura ${facturaID} después de intentar eliminarlas.`
+    );
+}
+
+/*
 function construirFilasCostos(filasDetalle, costosPreviosMap) {
     const contador = {};
 
@@ -434,7 +477,7 @@ function construirFilasCostos(filasDetalle, costosPreviosMap) {
         ];
     });
 }
-
+*/
 
 // ==========================================
 // 8. CLIENTES
@@ -710,8 +753,8 @@ if (formVentas) {
                     facturaID
                 );
 
-                // Esta función NO debe incluir TCostos
                 await eliminarRegistrosPrevios(facturaID);
+                await eliminarCostosFactura(facturaID);
             } else {
                 const facturas = await leerTabla(CONFIG.tablas.facturas);
 
@@ -829,7 +872,6 @@ if (formVentas) {
                 }
             });
 
-            // Corrección de fecha: tomar directamente el value del input date
             const fechaFactura =
                 document.getElementById("v_fecha")?.value || "";
 
@@ -846,7 +888,6 @@ if (formVentas) {
                     ? "Cancelada"
                     : "Activa";
 
-            // Guardar cabecera
             await escribirFilas(CONFIG.tablas.facturas, [[
                 facturaID,
                 fechaFactura,
@@ -859,14 +900,7 @@ if (formVentas) {
                 appState.origenActual || "Crochet"
             ]]);
 
-            // Mantener flujo actual de TDetalle
             await escribirFilas(CONFIG.tablas.detalle, filasDetalle);
-
-            // TCostos: en edición se borra solo esa factura y se reconstruye
-            // usando el orden exacto de filasDetalle
-            if (esEdicion) {
-                await eliminarCostosFactura(facturaID);
-            }
 
             const filasCostos = construirCostosDesdeDetalle(
                 filasDetalle,

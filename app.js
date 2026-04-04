@@ -981,10 +981,10 @@ if (formVentas) {
 
             const filasGanancias = [[
                 facturaID,
-                fechaFactura,
-                clienteNombre,
-                totalF,
-                estadoFinal,
+                '=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Fecha])',
+                '=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Cliente])',
+                '=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Total_Factura])',
+                '=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Estado])',
                 '=SUMIFS(TCostos[Subtotal_Costo],TCostos[Factura_ID],[@[Factura_ID]])',
                 "",
                 '=[@[Total_Factura]]-[@[Costos_Factura]]-[@[Costo_Envío]]'

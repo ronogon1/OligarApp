@@ -816,7 +816,7 @@ if (formVentas) {
                 );
 
                 await eliminarCostosFactura(facturaID);
-                await eliminarGananciaFactura(Factura_ID);
+                await eliminarGananciaFactura(facturaID);
                 await eliminarRegistrosPrevios(facturaID);
             } else {
                 const facturas = await leerTabla(CONFIG.tablas.facturas);

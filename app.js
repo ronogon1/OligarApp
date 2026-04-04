@@ -341,30 +341,43 @@ async function eliminarRegistrosPrevios(facturaID) {
 }
 
 
-function construirClaveCosto(producto, ocurrencia) {
-    return `${producto}__${ocurrencia}`;
+function construirCostosDesdeDetalle(filasDetalle, costosPrevios) {
+    const contador = {};
+
+    return filasDetalle.map((fila, index) => {
+        const producto = fila[1];
+
+        contador[producto] = (contador[producto] || 0) + 1;
+
+        const clave = `${producto}__${index}`;
+        const previo = costosPrevios[clave] || {};
+
+        return [
+            producto,
+            fila[0], // Factura_ID REAL (NO fórmula)
+            "", // Fecha (puedes dejar fórmula si quieres)
+            "", // Estado
+            fila[2], // Cantidad
+            fila[5], // Subtotal
+            previo.mo || "",
+            previo.mat || "",
+            "", "", "", ""
+        ];
+    });
 }
 
 function obtenerCostosPreviosFactura(costosTabla, facturaID) {
     const mapa = {};
-    const contador = {};
 
     costosTabla
         .slice(1)
-        .filter(
-            (fila) =>
-                fila[1] &&
-                fila[1].toString() === facturaID.toString()
-        )
-        .forEach((fila) => {
-            const producto = fila[0] || "";
-            contador[producto] = (contador[producto] || 0) + 1;
-
-            const clave = construirClaveCosto(producto, contador[producto]);
+        .filter(f => f[1] && f[1].toString() === facturaID.toString())
+        .forEach((fila, i) => {
+            const clave = `${fila[0]}__${i}`;
 
             mapa[clave] = {
-                moUnitario: fila[6] || "",
-                materialesUnitario: fila[7] || ""
+                mo: fila[6] || "",
+                mat: fila[7] || ""
             };
         });
 
@@ -375,37 +388,23 @@ async function eliminarCostosFactura(facturaID) {
     const token = await getAuthToken();
     const valores = await leerTabla(CONFIG.tablas.costos);
 
-    if (!valores || valores.length <= 1) return;
-
-    const filasAEliminar = valores
+    const filas = valores
         .slice(1)
-        .map((fila, index) => ({
-            facturaId: fila[1],
-            index
+        .map((fila, i) => ({
+            id: fila[1],
+            index: i
         }))
-        .filter(
-            (item) =>
-                item.facturaId &&
-                item.facturaId.toString() === facturaID.toString()
-        )
+        .filter(f => f.id && f.id.toString() === facturaID.toString())
         .reverse();
 
-    for (const fila of filasAEliminar) {
-        const resp = await fetch(
-            `${GRAPH_BASE_URL}/workbook/tables/${CONFIG.tablas.costos}/rows/itemAt(index=${fila.index})`,
+    for (const f of filas) {
+        await fetch(
+            `${GRAPH_BASE_URL}/workbook/tables/${CONFIG.tablas.costos}/rows/itemAt(index=${f.index})`,
             {
                 method: "DELETE",
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
+                headers: { Authorization: `Bearer ${token}` }
             }
         );
-
-        if (!resp.ok) {
-            throw new Error(
-                `No se pudo eliminar TCostos de la factura ${facturaID}.`
-            );
-        }
     }
 }
 
@@ -702,15 +701,16 @@ if (formVentas) {
                 ? clienteEncontrado.id
                 : "C-NUEVO";
 
-            let costosPreviosMap = {};
+            let costosPrevios = {};
 
             if (esEdicion) {
                 const costosActuales = await leerTabla(CONFIG.tablas.costos);
-                costosPreviosMap = obtenerCostosPreviosFactura(
+                costosPrevios = obtenerCostosPreviosFactura(
                     costosActuales,
                     facturaID
                 );
 
+                // Esta función NO debe incluir TCostos
                 await eliminarRegistrosPrevios(facturaID);
             } else {
                 const facturas = await leerTabla(CONFIG.tablas.facturas);
@@ -829,6 +829,7 @@ if (formVentas) {
                 }
             });
 
+            // Corrección de fecha: tomar directamente el value del input date
             const fechaFactura =
                 document.getElementById("v_fecha")?.value || "";
 
@@ -845,28 +846,7 @@ if (formVentas) {
                     ? "Cancelada"
                     : "Activa";
 
-            // Mantener flujo actual de TDetalle
-            await escribirFilas(CONFIG.tablas.detalle, filasDetalle);
-
-            // Corregir TCostos solo al editar / reconstruir alineado con TDetalle
-            const filasCostos = construirFilasCostos(
-                filasDetalle,
-                costosPreviosMap
-            );
-
-            if (esEdicion) {
-                await eliminarCostosFactura(facturaID);
-            }
-
-            await escribirFilas(CONFIG.tablas.costos, filasCostos);
-
-            if (filasAnticipos.length > 0) {
-                await escribirFilas(
-                    CONFIG.tablas.anticipos,
-                    filasAnticipos
-                );
-            }
-
+            // Guardar cabecera
             await escribirFilas(CONFIG.tablas.facturas, [[
                 facturaID,
                 fechaFactura,
@@ -878,6 +858,29 @@ if (formVentas) {
                 totalPagado,
                 appState.origenActual || "Crochet"
             ]]);
+
+            // Mantener flujo actual de TDetalle
+            await escribirFilas(CONFIG.tablas.detalle, filasDetalle);
+
+            // TCostos: en edición se borra solo esa factura y se reconstruye
+            // usando el orden exacto de filasDetalle
+            if (esEdicion) {
+                await eliminarCostosFactura(facturaID);
+            }
+
+            const filasCostos = construirCostosDesdeDetalle(
+                filasDetalle,
+                costosPrevios
+            );
+
+            await escribirFilas(CONFIG.tablas.costos, filasCostos);
+
+            if (filasAnticipos.length > 0) {
+                await escribirFilas(
+                    CONFIG.tablas.anticipos,
+                    filasAnticipos
+                );
+            }
 
             const filasGanancias = [[
                 facturaID,

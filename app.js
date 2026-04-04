@@ -298,8 +298,7 @@ async function eliminarRegistrosPrevios(facturaID) {
     const configTablas = [
         { nombre: CONFIG.tablas.facturas, indiceColumnaId: 0 },
         { nombre: CONFIG.tablas.detalle, indiceColumnaId: 0 },
-        { nombre: CONFIG.tablas.anticipos, indiceColumnaId: 1 },
-        { nombre: CONFIG.tablas.ganancia, indiceColumnaId: 0 }
+        { nombre: CONFIG.tablas.anticipos, indiceColumnaId: 1 }
     ];
 
     for (const tabla of configTablas) {
@@ -476,34 +475,71 @@ async function eliminarCostosFactura(facturaID) {
     );
 }
 
-/*
-function construirFilasCostos(filasDetalle, costosPreviosMap) {
-    const contador = {};
 
-    return filasDetalle.map((fila) => {
-        const producto = fila[1] || "";
-        contador[producto] = (contador[producto] || 0) + 1;
+async function eliminarGananciaFactura(facturaID) {
+    const token = await getAuthToken();
 
-        const clave = construirClaveCosto(producto, contador[producto]);
-        const previo = costosPreviosMap[clave] || {};
+    for (let intento = 1; intento <= 3; intento++) {
+        const valores = await leerTabla(CONFIG.tablas.ganancia);
 
-        return [
-            fila[1],
-            "=TDetalle[@[Factura_ID]]",
-            "=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Fecha])",
-            "=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Estado])",
-            "=TDetalle[@Cantidad]",
-            "=TDetalle[@Subtotal]",
-            previo.moUnitario ?? "",
-            previo.materialesUnitario ?? "",
-            "=SUM(TCostos[@[MO_Unitario]:[Materiales_Unitario]])",
-            "=[@[Costo_Unitario]]*[@Cantidad]",
-            "=[@[Ganancia_Producto]]/[@Cantidad]",
-            "=[@[Subtotal_Venta]]-[@[Subtotal_Costo]]"
-        ];
-    });
+        const filas = valores
+            .slice(1)
+            .map((fila, i) => ({
+                id: fila[0],
+                index: i
+            }))
+            .filter(
+                (f) =>
+                    f.id &&
+                    f.id.toString() === facturaID.toString()
+            )
+            .reverse();
+
+        if (!filas.length) {
+            return;
+        }
+
+        for (const f of filas) {
+            const resp = await fetch(
+                `${GRAPH_BASE_URL}/workbook/tables/${CONFIG.tablas.ganancia}/rows/itemAt(index=${f.index})`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                }
+            );
+
+            if (!resp.ok) {
+                const detalle = await resp.text();
+                throw new Error(
+                    `No se pudo eliminar TGanancia para la factura ${facturaID}. ` +
+                    `Status: ${resp.status}. Detalle: ${detalle}`
+                );
+            }
+        }
+
+        await esperar(500);
+
+        const verificacion = await leerTabla(CONFIG.tablas.ganancia);
+        const quedan = verificacion
+            .slice(1)
+            .some(
+                (fila) =>
+                    fila[0] &&
+                    fila[0].toString() === facturaID.toString()
+            );
+
+        if (!quedan) {
+            return;
+        }
+    }
+
+    throw new Error(
+        `Persisten filas en TGanancia para la factura ${facturaID} después de intentar eliminarlas.`
+    );
 }
-*/
+
 
 // ==========================================
 // 8. CLIENTES
@@ -780,6 +816,7 @@ if (formVentas) {
                 );
 
                 await eliminarCostosFactura(facturaID);
+                await eliminarGananciaFactura(Factura_ID);
                 await eliminarRegistrosPrevios(facturaID);
             } else {
                 const facturas = await leerTabla(CONFIG.tablas.facturas);

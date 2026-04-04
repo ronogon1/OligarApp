@@ -299,16 +299,13 @@ async function eliminarRegistrosPrevios(facturaID) {
         { nombre: CONFIG.tablas.facturas, indiceColumnaId: 0 },
         { nombre: CONFIG.tablas.detalle, indiceColumnaId: 0 },
         { nombre: CONFIG.tablas.anticipos, indiceColumnaId: 1 },
-        { nombre: CONFIG.tablas.costos, indiceColumnaId: 1 },
         { nombre: CONFIG.tablas.ganancia, indiceColumnaId: 0 }
     ];
 
     for (const tabla of configTablas) {
         const valores = await leerTabla(tabla.nombre);
 
-        if (!valores || valores.length <= 1) {
-            continue;
-        }
+        if (!valores || valores.length <= 1) continue;
 
         const filasAEliminar = valores
             .slice(1)
@@ -336,11 +333,107 @@ async function eliminarRegistrosPrevios(facturaID) {
 
             if (!resp.ok) {
                 throw new Error(
-                    `No se pudo eliminar la fila previa en ${tabla.nombre} para la factura ${facturaID}.`
+                    `No se pudo eliminar en ${tabla.nombre} la factura ${facturaID}.`
                 );
             }
         }
     }
+}
+
+
+function construirClaveCosto(producto, ocurrencia) {
+    return `${producto}__${ocurrencia}`;
+}
+
+function obtenerCostosPreviosFactura(costosTabla, facturaID) {
+    const mapa = {};
+    const contador = {};
+
+    costosTabla
+        .slice(1)
+        .filter(
+            (fila) =>
+                fila[1] &&
+                fila[1].toString() === facturaID.toString()
+        )
+        .forEach((fila) => {
+            const producto = fila[0] || "";
+            contador[producto] = (contador[producto] || 0) + 1;
+
+            const clave = construirClaveCosto(producto, contador[producto]);
+
+            mapa[clave] = {
+                moUnitario: fila[6] || "",
+                materialesUnitario: fila[7] || ""
+            };
+        });
+
+    return mapa;
+}
+
+async function eliminarCostosFactura(facturaID) {
+    const token = await getAuthToken();
+    const valores = await leerTabla(CONFIG.tablas.costos);
+
+    if (!valores || valores.length <= 1) return;
+
+    const filasAEliminar = valores
+        .slice(1)
+        .map((fila, index) => ({
+            facturaId: fila[1],
+            index
+        }))
+        .filter(
+            (item) =>
+                item.facturaId &&
+                item.facturaId.toString() === facturaID.toString()
+        )
+        .reverse();
+
+    for (const fila of filasAEliminar) {
+        const resp = await fetch(
+            `${GRAPH_BASE_URL}/workbook/tables/${CONFIG.tablas.costos}/rows/itemAt(index=${fila.index})`,
+            {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }
+        );
+
+        if (!resp.ok) {
+            throw new Error(
+                `No se pudo eliminar TCostos de la factura ${facturaID}.`
+            );
+        }
+    }
+}
+
+function construirFilasCostos(filasDetalle, costosPreviosMap) {
+    const contador = {};
+
+    return filasDetalle.map((fila) => {
+        const producto = fila[1] || "";
+        contador[producto] = (contador[producto] || 0) + 1;
+
+        const clave = construirClaveCosto(producto, contador[producto]);
+        const previo = costosPreviosMap[clave] || {};
+
+        return [
+            fila[1],
+            "=TDetalle[@[Factura_ID]]",
+            "=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Fecha])",
+            "=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Estado])",
+            "=TDetalle[@Cantidad]",
+            "=TDetalle[@Subtotal]",
+            previo.moUnitario ?? "",
+            previo.materialesUnitario ?? "",
+            "=SUM(TCostos[@[MO_Unitario]:[Materiales_Unitario]])",
+            "=[@[Costo_Unitario]]*[@Cantidad]",
+            "=[@[Ganancia_Producto]]/[@Cantidad]",
+            "=[@[Subtotal_Venta]]-[@[Subtotal_Costo]]"
+        ];
+    });
 }
 
 
@@ -609,7 +702,15 @@ if (formVentas) {
                 ? clienteEncontrado.id
                 : "C-NUEVO";
 
+            let costosPreviosMap = {};
+
             if (esEdicion) {
+                const costosActuales = await leerTabla(CONFIG.tablas.costos);
+                costosPreviosMap = obtenerCostosPreviosFactura(
+                    costosActuales,
+                    facturaID
+                );
+
                 await eliminarRegistrosPrevios(facturaID);
             } else {
                 const facturas = await leerTabla(CONFIG.tablas.facturas);
@@ -728,6 +829,9 @@ if (formVentas) {
                 }
             });
 
+            const fechaFactura =
+                document.getElementById("v_fecha")?.value || "";
+
             const envio =
                 parseFloat(document.getElementById("v_envio")?.value) || 0;
             const descG =
@@ -741,46 +845,19 @@ if (formVentas) {
                     ? "Cancelada"
                     : "Activa";
 
-            const filaFactura = [[
-                facturaID,
-                document.getElementById("v_fecha")?.value || "",
-                clienteNombre,
-                envio,
-                descG,
-                totalF,
-                estadoFinal,
-                totalPagado,
-                appState.origenActual || "Crochet"
-            ]];
-
-            const filasCostos = filasDetalle.map((fila) => [
-                fila[1],
-                "=TDetalle[@[Factura_ID]]",
-                "=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Fecha])",
-                "=XLOOKUP([@[Factura_ID]],TFacturas[Factura_ID],TFacturas[Estado])",
-                "=TDetalle[@Cantidad]",
-                "=TDetalle[@Subtotal]",
-                "",
-                "",
-                "=SUM(TCostos[@[MO_Unitario]:[Materiales_Unitario]])",
-                "=[@[Costo_Unitario]]*[@Cantidad]",
-                "=[@[Ganancia_Producto]]/[@Cantidad]",
-                "=[@[Subtotal_Venta]]-[@[Subtotal_Costo]]"
-            ]);
-
-            const filasGanancias = [[
-                facturaID,
-                document.getElementById("v_fecha")?.value || "",
-                clienteNombre,
-                totalF,
-                estadoFinal,
-                '=SUMIFS(TCostos[Subtotal_Costo],TCostos[Factura_ID],[@[Factura_ID]])',
-                "",
-                '=[@[Total_Factura]]-[@[Costos_Factura]]-[@[Costo_Envío]]'
-            ]];
-
-            await escribirFilas(CONFIG.tablas.facturas, filaFactura);
+            // Mantener flujo actual de TDetalle
             await escribirFilas(CONFIG.tablas.detalle, filasDetalle);
+
+            // Corregir TCostos solo al editar / reconstruir alineado con TDetalle
+            const filasCostos = construirFilasCostos(
+                filasDetalle,
+                costosPreviosMap
+            );
+
+            if (esEdicion) {
+                await eliminarCostosFactura(facturaID);
+            }
+
             await escribirFilas(CONFIG.tablas.costos, filasCostos);
 
             if (filasAnticipos.length > 0) {
@@ -789,6 +866,29 @@ if (formVentas) {
                     filasAnticipos
                 );
             }
+
+            await escribirFilas(CONFIG.tablas.facturas, [[
+                facturaID,
+                fechaFactura,
+                clienteNombre,
+                envio,
+                descG,
+                totalF,
+                estadoFinal,
+                totalPagado,
+                appState.origenActual || "Crochet"
+            ]]);
+
+            const filasGanancias = [[
+                facturaID,
+                fechaFactura,
+                clienteNombre,
+                totalF,
+                estadoFinal,
+                '=SUMIFS(TCostos[Subtotal_Costo],TCostos[Factura_ID],[@[Factura_ID]])',
+                "",
+                '=[@[Total_Factura]]-[@[Costos_Factura]]-[@[Costo_Envío]]'
+            ]];
 
             await escribirFilas(CONFIG.tablas.ganancia, filasGanancias);
 
